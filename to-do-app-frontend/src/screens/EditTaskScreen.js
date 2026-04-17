@@ -37,10 +37,14 @@ export default function EditTaskScreen({ route, navigation }) {
     setIsLoading(true);
     try {
       const response = await api.get(`/tasks/${taskId}`);
+      const rawDate = response.data.due_date;
+      const [year, month, day] = rawDate
+        ? rawDate.split('-').map(Number)
+        : [null, null, null];
       setTask({
         title: response.data.title,
         description: response.data.description,
-        dueDate: new Date(response.data.due_date),
+        dueDate: rawDate ? new Date(year, month - 1, day) : new Date(),
         category: response.data.category_id,
         completed: response.data.completed,
         priority: response.data.priority ?? 'medium',

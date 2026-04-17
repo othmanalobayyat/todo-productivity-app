@@ -1,14 +1,11 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showToast } from '../components/Toast';
-import HeaderComponenetProfile from '../components/HeaderComponenetProfile';
+import HeaderComponentProfile from '../components/HeaderComponentProfile';
 import api from '../services/api';
 
 export default function ProfileScreen({ userData, onLogoutSuccess }) {
-  const navigation = useNavigation();
-
   // Logout handler
   const handleLogout = async () => {
     try {
@@ -18,15 +15,9 @@ export default function ProfileScreen({ userData, onLogoutSuccess }) {
       // Remove the auth token from AsyncStorage
       await AsyncStorage.removeItem('auth_token');
 
-      // Notify App.js that the user has logged out
+      // Notify App.js that the user has logged out — App.js handles navigation
       onLogoutSuccess();
       showToast('Logged out successfully', 'success');
-
-      // Reset the navigation stack and go to the Login screen
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
     } catch (error) {
       console.error('Error logging out:', error);
       // Still clear the local token so the user is not stuck
@@ -41,7 +32,7 @@ export default function ProfileScreen({ userData, onLogoutSuccess }) {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#451E5D" />
-      <HeaderComponenetProfile />
+      <HeaderComponentProfile />
 
       <View style={styles.avatarSection}>
         <View style={styles.avatar}>

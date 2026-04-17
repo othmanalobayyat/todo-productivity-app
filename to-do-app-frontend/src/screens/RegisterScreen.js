@@ -13,13 +13,13 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (password !== passwordConfirmation) {
-      showToast("Passwords don't match!");
+    if (!name || !email || !password || !passwordConfirmation) {
+      showToast('Please fill all fields!');
       return;
     }
 
-    if (!name || !email || !password || !passwordConfirmation) {
-      showToast('Please fill all fields!');
+    if (password !== passwordConfirmation) {
+      showToast("Passwords don't match!");
       return;
     }
 

@@ -22,7 +22,7 @@ const handleLogin = async () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      showToast('Login error: ' + error.code);
+      showToast('Unable to log in. Please check your connection and try again.');
     }
   };
 

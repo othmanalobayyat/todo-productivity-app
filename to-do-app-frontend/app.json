@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Todo Productivity App",
-    "slug": "snack-611acc4f-435d-4558-bc6e-ed4428cae75c",
+    "slug": "todo-productivity-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

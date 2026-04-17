@@ -1,14 +1,19 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 
-const HeaderComponenetProfile = () => (
+const HeaderComponent = ({ user }) => (
   <View style={styles.container}>
     <Image
       source={require('../../assets/logoWhite.png')}
       style={styles.logo}
       resizeMode="contain"
     />
-    <Text style={styles.title}>My Profile</Text>
+    <View>
+      <Text style={styles.greeting}>Hello,</Text>
+      <Text style={styles.name} numberOfLines={1}>
+        {user?.name || 'Guest'}
+      </Text>
+    </View>
   </View>
 );
 
@@ -33,11 +38,17 @@ const styles = StyleSheet.create({
     height: 40,
     marginRight: 12,
   },
-  title: {
+  greeting: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  name: {
     fontSize: 17,
     color: '#fff',
     fontWeight: '700',
   },
 });
 
-export default HeaderComponenetProfile;
+export default HeaderComponent;

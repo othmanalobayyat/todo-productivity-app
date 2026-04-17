@@ -33,9 +33,3 @@ Route::middleware('auth:sanctum')->group(function ()
     Route::get('/profile', [UserController::class, 'profile']);
     Route::post('/logout', [UserController::class, 'logout']);
 });
-
-
-Route::get('/user', function (Request $request)
-{
-    return $request->user();
-})->middleware('auth:sanctum');

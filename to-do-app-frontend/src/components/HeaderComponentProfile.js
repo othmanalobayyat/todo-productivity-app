@@ -1,19 +1,14 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 
-const HeaderComponent = ({ user }) => (
+const HeaderComponentProfile = () => (
   <View style={styles.container}>
     <Image
       source={require('../../assets/logoWhite.png')}
       style={styles.logo}
       resizeMode="contain"
     />
-    <View>
-      <Text style={styles.greeting}>Hello,</Text>
-      <Text style={styles.name} numberOfLines={1}>
-        {user?.name || 'Guest'}
-      </Text>
-    </View>
+    <Text style={styles.title}>My Profile</Text>
   </View>
 );
 
@@ -27,7 +22,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    // overflow must be absent (not 'hidden') so the shadow renders on iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18,
@@ -39,17 +33,11 @@ const styles = StyleSheet.create({
     height: 40,
     marginRight: 12,
   },
-  greeting: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '500',
-    letterSpacing: 0.3,
-  },
-  name: {
+  title: {
     fontSize: 17,
     color: '#fff',
     fontWeight: '700',
   },
 });
 
-export default HeaderComponent;
+export default HeaderComponentProfile;

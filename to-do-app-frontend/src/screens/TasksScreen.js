@@ -8,10 +8,9 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import api from '../services/api';
-import HeaderComponent from '../components/HeaderComponenet';
+import HeaderComponent from '../components/HeaderComponent';
 import { showToast } from '../components/Toast';
 
 export default function TasksScreen({ navigation, userData }) {
@@ -32,7 +31,6 @@ export default function TasksScreen({ navigation, userData }) {
     try {
       const response = await api.get('/tasks');
       const validTasks = response.data.filter((task) => task.id && task.title);
-      await AsyncStorage.setItem('tasks', JSON.stringify(validTasks));
       setTasks(validTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);

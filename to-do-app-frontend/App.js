@@ -6,7 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import api from './src/services/api';
-import {getToken} from './auth';
+import { getToken } from './auth';
 
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -21,46 +21,87 @@ import Toast, { toastRef } from './src/components/Toast';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const SplashScreen = () => {
+const MIN_SPLASH_MS = 1500;
+
+const SplashScreen = () => (
+  <View style={styles.splashContainer}>
+    <Image source={require('./assets/logoWhite.png')} style={styles.logo} />
+  </View>
+);
+
+// Defined outside App so it is not recreated on every render.
+function TabNavigator({ userData, onLogoutSuccess }) {
   return (
-    <View style={styles.splashContainer}>
-      <Image source={require('./assets/logoWhite.png')} style={styles.logo} />
-    </View>
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ color, size }) => {
+          const iconName = route.name === 'Tasks' ? 'tasks' : 'user';
+          return <Icon name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#451E5D',
+        tabBarInactiveTintColor: 'gray',
+        tabBarStyle: { backgroundColor: '#fff' },
+        tabBarLabelStyle: { fontSize: 12 },
+      })}>
+      <Tab.Screen name="Tasks" options={{ headerShown: false }}>
+        {(props) => <TasksScreen {...props} userData={userData} />}
+      </Tab.Screen>
+      <Tab.Screen name="Profile" options={{ headerShown: false }}>
+        {(props) => (
+          <ProfileScreen
+            {...props}
+            onLogoutSuccess={onLogoutSuccess}
+            userData={userData}
+          />
+        )}
+      </Tab.Screen>
+    </Tab.Navigator>
   );
-};
+}
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // Added for splash screen delay
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setTimeout(async () => {
-      async function checkAuthStatus() {
-        const token = await AsyncStorage.getItem('auth_token');
-        if (token) {
-          try {
-            const userResponse = await api.get('/profile');
-            setUserData(userResponse.data);
-            setIsLoggedIn(true);
-          } catch (error) {
-            console.error('Failed to fetch user data.', error);
-            setIsLoggedIn(false);
-          }
-        } else {
+    const start = Date.now();
+
+    async function checkAuthStatus() {
+      const token = await AsyncStorage.getItem('auth_token');
+      if (token) {
+        try {
+          const userResponse = await api.get('/profile');
+          setUserData(userResponse.data);
+          setIsLoggedIn(true);
+        } catch (error) {
+          console.error('Failed to fetch user data.', error);
           setIsLoggedIn(false);
         }
+      } else {
+        setIsLoggedIn(false);
       }
+    }
+
+    async function initApp() {
       await checkAuthStatus();
+      // Keep splash visible for at least MIN_SPLASH_MS, but no longer.
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
       setIsLoading(false);
-    }, 3000); // Splash screen delay
+    }
+
+    initApp();
   }, []);
 
-const handleLoginSuccess = async (userData) => {
+  const handleLoginSuccess = async (user) => {
     const token = await getToken();
     if (token) {
       setIsLoggedIn(true);
-      setUserData(userData);
+      setUserData(user);
     }
   };
 
@@ -69,117 +110,72 @@ const handleLoginSuccess = async (userData) => {
     setUserData(null);
   };
 
-  function TabNavigator() {
-    return (
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
-            if (route.name === 'Tasks') {
-              iconName = 'tasks';
-            } else if (route.name === 'Profile') {
-              iconName = 'user';
-            }
-
-            // Return the icon component
-            return <Icon name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: '#451E5D', // Active icon color
-          tabBarInactiveTintColor: 'gray', // Inactive icon color
-          tabBarStyle: {
-            backgroundColor: '#fff', // Tab bar background color
-          },
-          tabBarLabelStyle: {
-            fontSize: 12,
-          },
-        })}>
-        <Tab.Screen
-          name="Tasks"
-          options={{ headerShown: false }}
-        >
-        {(props) => (<TasksScreen {...props} userData={userData}/>)}
-        </Tab.Screen>
-        <Tab.Screen
-          name="Profile"
-          options={{ headerShown: false }}
-        >
-        {(props) => (<ProfileScreen {...props} onLogoutSuccess={handleLogoutSuccess} userData={userData}/>)}
-        </Tab.Screen>
-      </Tab.Navigator>
-    );
-  }
-
   if (isLoading) {
     return <SplashScreen />;
   }
 
+  const headerOptions = (title) => ({
+    title,
+    headerStyle: { backgroundColor: '#451E5D' },
+    headerTitleStyle: { color: '#fff' },
+    headerTintColor: '#fff',
+  });
+
   return (
     <>
-    <NavigationContainer>
-      <StatusBar backgroundColor="#451E5D" />
-      <Stack.Navigator initialRouteName={isLoggedIn ? 'Main' : 'Welcome'}>
-        {!isLoggedIn ? (
-          <>
-            <Stack.Screen
-              name="Welcome"
-              component={WelcomeScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen name="Login" options={{ headerShown: false }}>
-              {(props) => (
-                <LoginScreen {...props} onLoginSuccess={handleLoginSuccess} />
-              )}
-            </Stack.Screen>
-            <Stack.Screen name="Register" options={{ headerShown: false }}>
-              {(props) => (
-                <RegisterScreen
-                  {...props}
-                  onRegisterSuccess={handleLoginSuccess}
-                />
-              )}
-            </Stack.Screen>
-          </>
-        ) : (
-          <>
-            <Stack.Screen
-              name="Main"
-              component={TabNavigator}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="CreateTask"
-              component={CreateTaskScreen}
-              options={{
-                title: 'Create Task', // Set the title of the screen
-                headerStyle: { backgroundColor: '#451E5D' }, // Set the background color of the header
-                headerTitleStyle: { color: '#fff' }, // Set the text color of the title
-                headerTintColor: '#fff', // Set the color of the back button and other header icons
-              }}
-            />
-            <Stack.Screen
-              name="EditTask"
-              component={EditTaskScreen}
-              options={{
-                title: 'Edit Task', // Set the title of the screen
-                headerStyle: { backgroundColor: '#451E5D' }, // Set the background color of the header
-                headerTitleStyle: { color: '#fff' }, // Set the text color of the title
-                headerTintColor: '#fff', // Set the color of the back button and other header icons
-              }}
-            />
-            <Stack.Screen
-              name="TaskDetails"
-              component={TaskDetailsScreen}
-              options={{
-                title: 'Task Details', // Set the title of the screen
-                headerStyle: { backgroundColor: '#451E5D' }, // Set the background color of the header
-                headerTitleStyle: { color: '#fff' }, // Set the text color of the title
-                headerTintColor: '#fff', // Set the color of the back button and other header icons
-              }}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+      <NavigationContainer>
+        <StatusBar backgroundColor="#451E5D" />
+        <Stack.Navigator initialRouteName={isLoggedIn ? 'Main' : 'Welcome'}>
+          {!isLoggedIn ? (
+            <>
+              <Stack.Screen
+                name="Welcome"
+                component={WelcomeScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen name="Login" options={{ headerShown: false }}>
+                {(props) => (
+                  <LoginScreen {...props} onLoginSuccess={handleLoginSuccess} />
+                )}
+              </Stack.Screen>
+              <Stack.Screen name="Register" options={{ headerShown: false }}>
+                {(props) => (
+                  <RegisterScreen
+                    {...props}
+                    onRegisterSuccess={handleLoginSuccess}
+                  />
+                )}
+              </Stack.Screen>
+            </>
+          ) : (
+            <>
+              <Stack.Screen name="Main" options={{ headerShown: false }}>
+                {() => (
+                  <TabNavigator
+                    userData={userData}
+                    onLogoutSuccess={handleLogoutSuccess}
+                  />
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="CreateTask"
+                component={CreateTaskScreen}
+                options={headerOptions('Create Task')}
+              />
+              <Stack.Screen
+                name="EditTask"
+                component={EditTaskScreen}
+                options={headerOptions('Edit Task')}
+              />
+              <Stack.Screen
+                name="TaskDetails"
+                component={TaskDetailsScreen}
+                options={headerOptions('Task Details')}
+              />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
       <Toast ref={toastRef} />
     </>
   );
