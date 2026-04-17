@@ -1,29 +1,34 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const HeaderComponent = ({ user }) => (
-  <View style={styles.container}>
-    <Image
-      source={require('../../assets/logoWhite.png')}
-      style={styles.logo}
-      resizeMode="contain"
-    />
-    <View>
-      <Text style={styles.greeting}>Hello,</Text>
-      <Text style={styles.name} numberOfLines={1}>
-        {user?.name || 'Guest'}
-      </Text>
+const HeaderComponent = ({ user }) => {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+      <Image
+        source={require('../../assets/logoWhite.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+      <View>
+        <Text style={styles.greeting}>Hello,</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {user?.name || 'Guest'}
+        </Text>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#451E5D',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 14,
+    // paddingTop is set dynamically above using safe area insets
+    paddingBottom: 18,
     paddingHorizontal: 16,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
@@ -34,8 +39,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   logo: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     marginRight: 12,
   },
   greeting: {

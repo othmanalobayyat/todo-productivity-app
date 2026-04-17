@@ -6,11 +6,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import api from './src/services/api';
-import { getToken } from './auth';
 
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
 import TasksScreen from './src/screens/TasksScreen';
 import CreateTaskScreen from './src/screens/CreateTaskScreen';
 import EditTaskScreen from './src/screens/EditTaskScreen';
@@ -30,7 +30,7 @@ const SplashScreen = () => (
 );
 
 // Defined outside App so it is not recreated on every render.
-function TabNavigator({ userData, onLogoutSuccess }) {
+function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -51,6 +51,7 @@ function TabNavigator({ userData, onLogoutSuccess }) {
           <ProfileScreen
             {...props}
             onLogoutSuccess={onLogoutSuccess}
+            onProfileUpdate={onProfileUpdate}
             userData={userData}
           />
         )}
@@ -97,17 +98,18 @@ export default function App() {
     initApp();
   }, []);
 
-  const handleLoginSuccess = async (user) => {
-    const token = await getToken();
-    if (token) {
-      setIsLoggedIn(true);
-      setUserData(user);
-    }
+  const handleLoginSuccess = (user) => {
+    setIsLoggedIn(true);
+    setUserData(user);
   };
 
   const handleLogoutSuccess = () => {
     setIsLoggedIn(false);
     setUserData(null);
+  };
+
+  const handleProfileUpdate = (updatedUser) => {
+    setUserData(updatedUser);
   };
 
   if (isLoading) {
@@ -154,6 +156,7 @@ export default function App() {
                   <TabNavigator
                     userData={userData}
                     onLogoutSuccess={handleLogoutSuccess}
+                    onProfileUpdate={handleProfileUpdate}
                   />
                 )}
               </Stack.Screen>
@@ -172,6 +175,14 @@ export default function App() {
                 component={TaskDetailsScreen}
                 options={headerOptions('Task Details')}
               />
+              <Stack.Screen name="EditProfile" options={headerOptions('Edit Profile')}>
+                {(props) => (
+                  <EditProfileScreen
+                    {...props}
+                    onProfileUpdate={handleProfileUpdate}
+                  />
+                )}
+              </Stack.Screen>
             </>
           )}
         </Stack.Navigator>

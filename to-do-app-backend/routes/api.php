@@ -31,5 +31,6 @@ Route::middleware('auth:sanctum')->group(function ()
     Route::delete('/tasks/{task}/subtasks/{subtask}', [SubtaskController::class, 'destroy']);
     Route::get('/task-categories', function () {return response()->json(TaskCategory::all());});
     Route::get('/profile', [UserController::class, 'profile']);
+    Route::put('/profile', [UserController::class, 'updateProfile']);
     Route::post('/logout', [UserController::class, 'logout']);
 });

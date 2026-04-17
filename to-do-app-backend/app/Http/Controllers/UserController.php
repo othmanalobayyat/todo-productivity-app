@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use App\Models\User;
 
 class UserController extends Controller
@@ -77,14 +78,52 @@ class UserController extends Controller
      */
     public function profile(Request $request)
     {
-        // Get the authenticated user
-        $user = Auth::user();
+        $user = $request->user();
 
-        // Return user profile data (you can add more fields as needed)
         return response()->json([
-            'name' => $user->name,
+            'name'  => $user->name,
             'email' => $user->email,
-            // Add other profile information as needed
+        ]);
+    }
+
+    /**
+     * Update the authenticated user's name and email.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        try {
+            $request->validate([
+                'name'  => ['required', 'string', 'max:255'],
+                'email' => [
+                    'required', 'string', 'email', 'max:255',
+                    Rule::unique('users')->ignore($user->id),
+                ],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $errors = $e->validator->errors();
+
+            if ($errors->has('email')) {
+                return response()->json([
+                    'message' => 'That email address is already in use.',
+                ], 409);
+            }
+
+            return response()->json([
+                'message' => 'Validation error.',
+                'errors'  => $errors->messages(),
+            ], 422);
+        }
+
+        $user->update([
+            'name'  => $request->name,
+            'email' => $request->email,
+        ]);
+
+        return response()->json([
+            'name'  => $user->name,
+            'email' => $user->email,
         ]);
     }
 }
