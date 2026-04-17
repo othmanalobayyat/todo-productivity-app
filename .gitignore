@@ -1,0 +1,83 @@
+# ============================================================
+# Root-level .gitignore for the TaskFlow monorepo
+# Covers: React Native (Expo) frontend + Laravel backend
+# ============================================================
+
+# ──────────────────────────────
+# Dependencies
+# ──────────────────────────────
+node_modules/
+vendor/
+
+# ──────────────────────────────
+# Environment files (NEVER commit secrets)
+# ──────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.backup
+.env.production
+
+# ──────────────────────────────
+# Expo / React Native
+# ──────────────────────────────
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.orig.*
+
+# Native signing / keys
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Metro bundler
+.metro-health-check*
+
+# ──────────────────────────────
+# Laravel
+# ──────────────────────────────
+/to-do-app-backend/public/build/
+/to-do-app-backend/public/hot/
+/to-do-app-backend/public/storage/
+/to-do-app-backend/storage/*.key
+/to-do-app-backend/storage/pail/
+/to-do-app-backend/bootstrap/cache/
+/to-do-app-backend/database/database.sqlite
+
+# Laravel auth & IDE helpers
+/to-do-app-backend/auth.json
+/to-do-app-backend/.phpactor.json
+/to-do-app-backend/.phpunit.cache/
+/to-do-app-backend/.phpunit.result.cache
+/to-do-app-backend/Homestead.json
+/to-do-app-backend/Homestead.yaml
+
+# ──────────────────────────────
+# Build / cache outputs
+# ──────────────────────────────
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# ──────────────────────────────
+# OS files
+# ──────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ──────────────────────────────
+# IDE / Editor
+# ──────────────────────────────
+.idea/
+.vscode/
+.fleet/
+.nova/
+.zed/
+*.swp
+*.swo
