@@ -9,7 +9,14 @@ class TaskController extends Controller
 {
     public function index()
     {
-        $tasks = Task::with('category')->where('user_id', auth()->id())->get();
+        $tasks = Task::with('category')
+            ->withCount([
+                'subtasks as subtasks_total',
+                'subtasks as subtasks_completed' => fn ($q) => $q->where('completed', true),
+            ])
+            ->where('user_id', auth()->id())
+            ->get();
+
         return response()->json($tasks);
     }
 

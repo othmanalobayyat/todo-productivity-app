@@ -20,7 +20,6 @@ export default function TasksScreen({ navigation, userData }) {
   const [filter, setFilter] = useState('all');       // 'all' | 'completed' | 'pending'
   const [sort, setSort] = useState('priority');      // 'priority' | 'due_date'
   const [completingId, setCompletingId] = useState(null);
-  const [subtaskStats, setSubtaskStats] = useState({});
 
   useEffect(() => {
     fetchTasks();
@@ -35,22 +34,6 @@ export default function TasksScreen({ navigation, userData }) {
       const validTasks = response.data.filter((task) => task.id && task.title);
       await AsyncStorage.setItem('tasks', JSON.stringify(validTasks));
       setTasks(validTasks);
-
-      // Fetch subtask counts for all tasks concurrently.
-      // Each fetch is individually guarded so one failure doesn't block the rest.
-      const entries = await Promise.all(
-        validTasks.map(async (t) => {
-          try {
-            const res = await api.get(`/tasks/${t.id}/subtasks`);
-            const total = res.data.length;
-            const done = res.data.filter((s) => s.completed).length;
-            return [t.id, { done, total }];
-          } catch {
-            return [t.id, { done: 0, total: 0 }];
-          }
-        })
-      );
-      setSubtaskStats(Object.fromEntries(entries));
     } catch (error) {
       console.error('Error fetching tasks:', error);
       showToast('Unable to fetch tasks');
@@ -177,16 +160,16 @@ export default function TasksScreen({ navigation, userData }) {
         <View style={[styles.priorityBadge, { backgroundColor: priorityColors[item.priority] || priorityColors.medium }]}>
           <Text style={styles.priorityText}>{(item.priority || 'medium').toUpperCase()}</Text>
         </View>
-        {subtaskStats[item.id]?.total > 0 && (
+        {item.subtasks_total > 0 && (
           <View style={styles.subtaskProgressRow}>
             <View style={styles.subtaskProgressTrack}>
               <View
                 style={[
                   styles.subtaskProgressFill,
                   {
-                    width: `${Math.round((subtaskStats[item.id].done / subtaskStats[item.id].total) * 100)}%`,
+                    width: `${Math.round((item.subtasks_completed / item.subtasks_total) * 100)}%`,
                     backgroundColor:
-                      subtaskStats[item.id].done === subtaskStats[item.id].total
+                      item.subtasks_completed === item.subtasks_total
                         ? '#27ae60'
                         : '#451E5D',
                   },
@@ -196,10 +179,10 @@ export default function TasksScreen({ navigation, userData }) {
             <Text
               style={[
                 styles.subtaskProgressLabel,
-                subtaskStats[item.id].done === subtaskStats[item.id].total &&
+                item.subtasks_completed === item.subtasks_total &&
                   styles.subtaskProgressLabelDone,
               ]}>
-              {subtaskStats[item.id].done}/{subtaskStats[item.id].total}
+              {item.subtasks_completed}/{item.subtasks_total}
             </Text>
           </View>
         )}
