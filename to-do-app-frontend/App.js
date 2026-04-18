@@ -17,6 +17,7 @@ import CreateTaskScreen from "./src/screens/CreateTaskScreen";
 import EditTaskScreen from "./src/screens/EditTaskScreen";
 import TaskDetailsScreen from "./src/screens/TaskDetailsScreen";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
+import CalendarScreen from "./src/screens/CalendarScreen";
 import Toast, { toastRef } from "./src/components/Toast";
 
 const Stack = createStackNavigator();
@@ -31,14 +32,15 @@ const SplashScreen = () => (
 );
 
 // Defined outside App so it is not recreated on every render.
+const TAB_ICONS = { Tasks: "tasks", Calendar: "calendar", Profile: "user" };
+
 function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size }) => {
-          const iconName = route.name === "Tasks" ? "tasks" : "user";
-          return <Icon name={iconName} size={size} color={color} />;
-        },
+        tabBarIcon: ({ color, size }) => (
+          <Icon name={TAB_ICONS[route.name] ?? "circle"} size={size} color={color} />
+        ),
         tabBarActiveTintColor: "#451E5D",
         tabBarInactiveTintColor: "gray",
         tabBarStyle: { backgroundColor: "#fff" },
@@ -48,6 +50,7 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
       <Tab.Screen name="Tasks" options={{ headerShown: false }}>
         {(props) => <TasksScreen {...props} userData={userData} />}
       </Tab.Screen>
+      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Profile" options={{ headerShown: false }}>
         {(props) => (
           <ProfileScreen
