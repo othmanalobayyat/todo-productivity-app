@@ -108,6 +108,7 @@ class TaskController extends Controller
         }
 
         $task->completed = !$task->completed;
+        $task->completed_at = $task->completed ? now() : null;
         $task->save();
 
         $message = $task->completed ? 'Task marked as completed' : 'Task marked as incomplete';

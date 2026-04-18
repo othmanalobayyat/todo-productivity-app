@@ -123,9 +123,13 @@ router.patch("/tasks/:id/complete", authMiddleware, async function (req, res) {
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
+    var nowCompleting = !task.completed;
     var updated = await Prisma.tasks.update({
       where: { id: parseInt(req.params.id) },
-      data: { completed: !task.completed },
+      data: {
+        completed: nowCompleting,
+        completed_at: nowCompleting ? new Date() : null,
+      },
     });
     res.json(formatTask(updated));
   } catch (error) {

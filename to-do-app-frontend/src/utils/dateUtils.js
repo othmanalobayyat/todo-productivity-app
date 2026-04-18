@@ -8,5 +8,5 @@ export function formatLocalDate(date) {
 }
 
 export function getTodayString() {
-  return new Date().toISOString().split('T')[0];
+  return formatLocalDate(new Date());
 }

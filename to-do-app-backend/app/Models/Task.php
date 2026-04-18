@@ -9,7 +9,11 @@ class Task extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'category_id', 'title', 'description', 'completed', 'due_date', 'priority'];
+    protected $fillable = ['user_id', 'category_id', 'title', 'description', 'completed', 'completed_at', 'due_date', 'priority'];
+
+    protected $casts = [
+        'completed_at' => 'datetime',
+    ];
 
     // A task belongs to a user
     public function user()

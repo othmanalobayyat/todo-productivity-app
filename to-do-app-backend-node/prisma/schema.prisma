@@ -118,6 +118,7 @@ model tasks {
   title           String
   description     String?
   completed       Boolean @default(dbgenerated("'0'"))
+  completed_at    DateTime?
   due_date        String?
   created_at      DateTime?
   updated_at      DateTime?

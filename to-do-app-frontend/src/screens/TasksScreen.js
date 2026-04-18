@@ -9,6 +9,7 @@ import {
   Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
+import Icon5 from "react-native-vector-icons/FontAwesome5";
 import api from "../services/api";
 import AppHeader from "../components/AppHeader";
 import TaskItem from "../components/TaskItem";
@@ -16,6 +17,7 @@ import { showToast } from "../components/Toast";
 import { PRIORITY_RANK } from "../constants/priorities";
 import { getTodayString } from "../utils/dateUtils";
 import { getInsights, getInsightMessage } from "../utils/insightsUtils";
+import { calculateStreak } from "../utils/streakUtils";
 
 export default function TasksScreen({ navigation, userData }) {
   const [tasks, setTasks] = useState([]);
@@ -48,7 +50,9 @@ export default function TasksScreen({ navigation, userData }) {
     setCompletingId(id);
     try {
       await api.patch(`/tasks/${id}/complete`, {});
-      fetchTasks();
+      await fetchTasks();
+    } catch (error) {
+      showToast("Failed to update task");
     } finally {
       setCompletingId(null);
     }
@@ -74,6 +78,7 @@ export default function TasksScreen({ navigation, userData }) {
 
   const today = getTodayString();
   const insights = getInsights(tasks, today);
+  const streak = calculateStreak(tasks);
   const { total, completed, overdue, dueToday, highPending } = insights;
   const pending = total - completed;
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -132,7 +137,19 @@ export default function TasksScreen({ navigation, userData }) {
       <AppHeader user={userData} />
       <View style={styles.dashboard}>
         <View style={styles.dashboardHeader}>
-          <Text style={styles.title}>Tasks</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Tasks</Text>
+            <View style={[styles.streakBadge, streak === 0 && styles.streakBadgeInactive]}>
+              <Icon5
+                name="fire-alt"
+                size={14}
+                color={streak === 0 ? "#bbb" : "#FF6000"}
+              />
+              <Text style={[styles.streakText, streak === 0 && styles.streakTextInactive]}>
+                {streak}
+              </Text>
+            </View>
+          </View>
           <TouchableOpacity onPress={() => navigation.navigate("CreateTask")}>
             <Icon name="plus-circle" size={36} color="#451E5D" />
           </TouchableOpacity>
@@ -268,6 +285,34 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "700",
     color: "#451E5D",
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 50,
+    borderWidth: 1.5,
+    borderColor: "#FF6000",
+    backgroundColor: "#FFF0E6",
+  },
+  streakBadgeInactive: {
+    borderColor: "#d0d0d0",
+    backgroundColor: "#f5f5f5",
+  },
+  streakText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FF6000",
+  },
+  streakTextInactive: {
+    color: "#bbb",
   },
   statsRow: {
     flexDirection: "row",
