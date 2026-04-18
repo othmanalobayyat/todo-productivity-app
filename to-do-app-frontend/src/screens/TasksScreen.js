@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,37 +7,38 @@ import {
   StatusBar,
   TouchableOpacity,
   Alert,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import api from '../services/api';
-import AppHeader from '../components/AppHeader';
-import TaskItem from '../components/TaskItem';
-import { showToast } from '../components/Toast';
-import { PRIORITY_RANK } from '../constants/priorities';
-import { getTodayString } from '../utils/dateUtils';
+} from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome";
+import api from "../services/api";
+import AppHeader from "../components/AppHeader";
+import TaskItem from "../components/TaskItem";
+import { showToast } from "../components/Toast";
+import { PRIORITY_RANK } from "../constants/priorities";
+import { getTodayString } from "../utils/dateUtils";
+import { getInsights, getInsightMessage } from "../utils/insightsUtils";
 
 export default function TasksScreen({ navigation, userData }) {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState('all');       // 'all' | 'completed' | 'pending'
-  const [sort, setSort] = useState('priority');      // 'priority' | 'due_date'
+  const [filter, setFilter] = useState("all"); // 'all' | 'completed' | 'pending'
+  const [sort, setSort] = useState("priority"); // 'priority' | 'due_date'
   const [completingId, setCompletingId] = useState(null);
 
   useEffect(() => {
     fetchTasks();
-    const unsubscribe = navigation.addListener('focus', fetchTasks);
+    const unsubscribe = navigation.addListener("focus", fetchTasks);
     return unsubscribe;
   }, [navigation]);
 
   async function fetchTasks() {
     setIsLoading(true);
     try {
-      const response = await api.get('/tasks');
+      const response = await api.get("/tasks");
       const validTasks = response.data.filter((task) => task.id && task.title);
       setTasks(validTasks);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
-      showToast('Unable to fetch tasks');
+      console.error("Error fetching tasks:", error);
+      showToast("Unable to fetch tasks");
     } finally {
       setIsLoading(false);
     }
@@ -54,56 +55,39 @@ export default function TasksScreen({ navigation, userData }) {
   }
 
   function confirmDeleteTask(id) {
-    Alert.alert(
-      'Delete Task',
-      'Are you sure you want to delete this task?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/tasks/${id}`);
-              fetchTasks();
-            } catch (error) {
-              showToast('Failed to delete task');
-            }
-          },
+    Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.delete(`/tasks/${id}`);
+            fetchTasks();
+          } catch (error) {
+            showToast("Failed to delete task");
+          }
         },
-      ]
-    );
+      },
+    ]);
   }
 
-  const total     = tasks.length;
-  const completed = tasks.filter((t) => t.completed).length;
-  const pending   = total - completed;
-  const progress  = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-  const today       = getTodayString();
-  const overdue     = tasks.filter((t) => !t.completed && t.due_date && t.due_date < today).length;
-  const dueToday    = tasks.filter((t) => !t.completed && t.due_date === today).length;
-  const highPending = tasks.filter((t) => !t.completed && t.priority === 'high').length;
-
-  function getSummaryMessage() {
-    if (total === 0)      return 'Add your first task to get started.';
-    if (pending === 0)    return 'All done! Great work today.';
-    if (overdue > 0)      return `${overdue} task${overdue !== 1 ? 's are' : ' is'} overdue.`;
-    if (highPending > 0)  return `${highPending} high-priority task${highPending !== 1 ? 's need' : ' needs'} attention.`;
-    if (dueToday > 0)     return `${dueToday} task${dueToday !== 1 ? 's are' : ' is'} due today.`;
-    if (progress >= 75)   return `Almost there — just ${pending} task${pending !== 1 ? 's' : ''} left.`;
-    return "You're clear for today. Keep it up!";
-  }
+  const today = getTodayString();
+  const insights = getInsights(tasks, today);
+  const { total, completed, overdue, dueToday, highPending } = insights;
+  const pending = total - completed;
+  const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   function getDisplayedTasks() {
     let result = [...tasks];
 
-    if (filter === 'completed') result = result.filter((t) => t.completed);
-    if (filter === 'pending')   result = result.filter((t) => !t.completed);
+    if (filter === "completed") result = result.filter((t) => t.completed);
+    if (filter === "pending") result = result.filter((t) => !t.completed);
 
-    if (sort === 'priority') {
-      result.sort((a, b) =>
-        (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2)
+    if (sort === "priority") {
+      result.sort(
+        (a, b) =>
+          (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2),
       );
     } else {
       result.sort((a, b) => {
@@ -120,12 +104,12 @@ export default function TasksScreen({ navigation, userData }) {
     <View style={styles.emptyState}>
       <Icon name="inbox" size={48} color="#ddd" />
       <Text style={styles.emptyStateText}>
-        {filtered ? 'No matching tasks' : 'No tasks yet'}
+        {filtered ? "No matching tasks" : "No tasks yet"}
       </Text>
       <Text style={styles.emptyStateSub}>
         {filtered
-          ? 'Try a different filter.'
-          : 'Tap the + button to add your first task.'}
+          ? "Try a different filter."
+          : "Tap the + button to add your first task."}
       </Text>
     </View>
   );
@@ -136,8 +120,8 @@ export default function TasksScreen({ navigation, userData }) {
       today={today}
       isCompleting={completingId === item.id}
       onToggle={toggleTaskComplete}
-      onDetails={(task) => navigation.navigate('TaskDetails', { task })}
-      onEdit={(id) => navigation.navigate('EditTask', { taskId: id })}
+      onDetails={(task) => navigation.navigate("TaskDetails", { task })}
+      onEdit={(id) => navigation.navigate("EditTask", { taskId: id })}
       onDelete={confirmDeleteTask}
     />
   );
@@ -149,7 +133,7 @@ export default function TasksScreen({ navigation, userData }) {
       <View style={styles.dashboard}>
         <View style={styles.dashboardHeader}>
           <Text style={styles.title}>Tasks</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('CreateTask')}>
+          <TouchableOpacity onPress={() => navigation.navigate("CreateTask")}>
             <Icon name="plus-circle" size={36} color="#451E5D" />
           </TouchableOpacity>
         </View>
@@ -160,11 +144,15 @@ export default function TasksScreen({ navigation, userData }) {
             <Text style={styles.statLabel}>Total</Text>
           </View>
           <View style={[styles.statBox, styles.statBoxMiddle]}>
-            <Text style={[styles.statNumber, { color: '#27ae60' }]}>{completed}</Text>
+            <Text style={[styles.statNumber, { color: "#27ae60" }]}>
+              {completed}
+            </Text>
             <Text style={styles.statLabel}>Done</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={[styles.statNumber, { color: '#e67e22' }]}>{pending}</Text>
+            <Text style={[styles.statNumber, { color: "#e67e22" }]}>
+              {pending}
+            </Text>
             <Text style={styles.statLabel}>Pending</Text>
           </View>
         </View>
@@ -173,7 +161,7 @@ export default function TasksScreen({ navigation, userData }) {
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
 
-        <Text style={styles.summaryMessage}>{getSummaryMessage()}</Text>
+        <Text style={styles.summaryMessage}>{getInsightMessage(insights)}</Text>
 
         {(overdue > 0 || dueToday > 0 || highPending > 0) && (
           <View style={styles.insightsRow}>
@@ -189,37 +177,52 @@ export default function TasksScreen({ navigation, userData }) {
             )}
             {highPending > 0 && (
               <View style={[styles.insightPill, styles.insightHigh]}>
-                <Text style={styles.insightPillText}>{highPending} High Priority</Text>
+                <Text style={styles.insightPillText}>
+                  {highPending} High Priority
+                </Text>
               </View>
             )}
           </View>
         )}
       </View>
+
       <View style={styles.controls}>
-        <View style={styles.controlRow}>
-          {['all', 'pending', 'completed'].map((f) => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.controlBtn, filter === f && styles.controlBtnActive]}
-              onPress={() => setFilter(f)}>
-              <Text style={[styles.controlBtnText, filter === f && styles.controlBtnTextActive]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={styles.controlRow}>
-          {[['priority', 'Priority'], ['due_date', 'Due Date']].map(([val, label]) => (
-            <TouchableOpacity
-              key={val}
-              style={[styles.controlBtn, sort === val && styles.controlBtnActive]}
-              onPress={() => setSort(val)}>
-              <Text style={[styles.controlBtnText, sort === val && styles.controlBtnTextActive]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {["all", "pending", "completed"].map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.controlBtn, filter === f && styles.controlBtnActive]}
+            onPress={() => setFilter(f)}
+          >
+            <Text
+              style={[
+                styles.controlBtnText,
+                filter === f && styles.controlBtnTextActive,
+              ]}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        <View style={styles.controlDivider} />
+        {[
+          ["priority", "Priority"],
+          ["due_date", "Due Date"],
+        ].map(([val, label]) => (
+          <TouchableOpacity
+            key={val}
+            style={[styles.controlBtn, sort === val && styles.controlBtnActive]}
+            onPress={() => setSort(val)}
+          >
+            <Text
+              style={[
+                styles.controlBtnText,
+                sort === val && styles.controlBtnTextActive,
+              ]}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {isLoading ? (
@@ -246,70 +249,70 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     marginTop: 12,
     marginBottom: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
   },
   dashboardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 14,
   },
   title: {
     fontSize: 26,
-    fontWeight: '700',
-    color: '#451E5D',
+    fontWeight: "700",
+    color: "#451E5D",
   },
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 14,
   },
   statBox: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statBoxMiddle: {
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   statNumber: {
     fontSize: 26,
-    fontWeight: '700',
-    color: '#451E5D',
+    fontWeight: "700",
+    color: "#451E5D",
   },
   statLabel: {
     fontSize: 11,
-    color: '#999',
+    color: "#999",
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   progressTrack: {
     height: 6,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     borderRadius: 3,
     marginBottom: 10,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
     height: 6,
-    backgroundColor: '#451E5D',
+    backgroundColor: "#451E5D",
     borderRadius: 3,
   },
   summaryMessage: {
     fontSize: 13,
-    color: '#777',
-    fontWeight: '500',
+    color: "#555",
+    fontWeight: "500",
   },
   insightsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
     marginTop: 10,
   },
@@ -320,65 +323,70 @@ const styles = StyleSheet.create({
   },
   insightPillText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
   },
   insightOverdue: {
-    backgroundColor: '#c0392b',
+    backgroundColor: "#c0392b",
   },
   insightToday: {
-    backgroundColor: '#451E5D',
+    backgroundColor: "#451E5D",
   },
   insightHigh: {
-    backgroundColor: '#e67e22',
+    backgroundColor: "#e67e22",
   },
   loadingText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 16,
     marginTop: 40,
-    color: '#999',
+    color: "#999",
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 60,
     paddingHorizontal: 40,
   },
   emptyStateText: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#555',
+    fontWeight: "600",
+    color: "#555",
     marginTop: 16,
   },
   emptyStateSub: {
     fontSize: 13,
-    color: '#aaa',
+    color: "#aaa",
     marginTop: 6,
-    textAlign: 'center',
+    textAlign: "center",
   },
   controls: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 14,
-    marginBottom: 6,
-  },
-  controlRow: {
-    flexDirection: 'row',
+    paddingVertical: 4,
     marginBottom: 6,
     gap: 6,
+  },
+  controlDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: "#e0e0e0",
+    marginHorizontal: 4,
   },
   controlBtn: {
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#451E5D',
+    borderColor: "#451E5D",
   },
   controlBtnActive: {
-    backgroundColor: '#451E5D',
+    backgroundColor: "#451E5D",
   },
   controlBtnText: {
     fontSize: 12,
-    color: '#451E5D',
+    color: "#451E5D",
   },
   controlBtnTextActive: {
-    color: '#fff',
+    color: "#fff",
   },
 });

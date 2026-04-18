@@ -5,7 +5,9 @@ import { PRIORITY_COLORS } from '../constants/priorities';
 
 export default function TaskItem({ item, today, isCompleting, onToggle, onDetails, onEdit, onDelete }) {
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={() => onDetails(item)}
       style={[
         styles.taskItem,
         isCompleting && { opacity: 0.45 },
@@ -73,7 +75,7 @@ export default function TaskItem({ item, today, isCompleting, onToggle, onDetail
           <Icon name="trash" size={24} color="#451E5D" />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
