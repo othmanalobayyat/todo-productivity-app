@@ -12,13 +12,12 @@ export function getInsights(tasks, today) {
 
 export function getInsightMessage({ total, completed, overdue, highPending, dueToday }) {
   const pending = total - completed;
-  const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-  if (total === 0)       return "Add your first task to get started.";
-  if (pending === 0)     return "All done! Great work today.";
-  if (overdue > 0)       return `${overdue} task${overdue !== 1 ? "s are" : " is"} overdue.`;
-  if (highPending > 0)   return `${highPending} high-priority task${highPending !== 1 ? "s need" : " needs"} attention.`;
-  if (dueToday > 0)      return `${dueToday} task${dueToday !== 1 ? "s are" : " is"} due today.`;
-  if (progress >= 75)    return `Almost there — just ${pending} task${pending !== 1 ? "s" : ""} left.`;
-  return "You're clear for today. Keep it up!";
+  if (total === 0)          return "💡 Add your first task to get started.";
+  if (overdue > 0)          return `⚠️ ${overdue} overdue — tackle ${overdue === 1 ? "it" : "those"} first.`;
+  if (highPending >= 2)     return `🔥 ${highPending} high-priority items need your focus.`;
+  if (dueToday > 0)         return `📅 ${dueToday} due today — don't let ${dueToday === 1 ? "it" : "them"} slip.`;
+  if (pending === 0)        return "✅ All caught up. Nice work!";
+  if (completed > 0)        return `💪 ${completed} done, ${pending} to go — keep the momentum.`;
+  return "💡 You're all set. Pick a task and get started.";
 }
