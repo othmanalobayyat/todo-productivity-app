@@ -1,6 +1,6 @@
 # ============================================================
 # Root-level .gitignore for the TaskFlow monorepo
-# Covers: React Native (Expo) frontend + Laravel backend
+# Covers: React Native (Expo) frontend + Laravel backend + Node.js backend
 # ============================================================
 
 # ──────────────────────────────
@@ -56,6 +56,12 @@ expo-env.d.ts
 /to-do-app-backend/.phpunit.result.cache
 /to-do-app-backend/Homestead.json
 /to-do-app-backend/Homestead.yaml
+
+# ──────────────────────────────
+# Node.js backend (Prisma / SQLite)
+# ──────────────────────────────
+to-do-app-backend-node/*.db
+to-do-app-backend-node/prisma/migrations/dev.db*
 
 # ──────────────────────────────
 # Build / cache outputs

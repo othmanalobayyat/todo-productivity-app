@@ -2,7 +2,9 @@ import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const HeaderComponentProfile = () => {
+// Pass `user` for the Tasks tab (shows "Hello, {name}").
+// Pass `title` for the Profile tab (shows a static label).
+const AppHeader = ({ user, title }) => {
   const insets = useSafeAreaInsets();
 
   return (
@@ -12,7 +14,14 @@ const HeaderComponentProfile = () => {
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.title}>My Profile</Text>
+      {user ? (
+        <View>
+          <Text style={styles.greeting}>Hello,</Text>
+          <Text style={styles.name} numberOfLines={1}>{user.name || 'Guest'}</Text>
+        </View>
+      ) : (
+        <Text style={styles.name}>{title}</Text>
+      )}
     </View>
   );
 };
@@ -22,7 +31,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#451E5D',
     flexDirection: 'row',
     alignItems: 'center',
-    // paddingTop is set dynamically above using safe area insets
     paddingBottom: 18,
     paddingHorizontal: 16,
     borderBottomLeftRadius: 20,
@@ -38,11 +46,17 @@ const styles = StyleSheet.create({
     height: 44,
     marginRight: 12,
   },
-  title: {
+  greeting: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  name: {
     fontSize: 17,
     color: '#fff',
     fontWeight: '700',
   },
 });
 
-export default HeaderComponentProfile;
+export default AppHeader;

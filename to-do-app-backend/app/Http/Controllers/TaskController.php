@@ -107,9 +107,10 @@ class TaskController extends Controller
             return response()->json(['error' => 'Task not found'], 404);
         }
 
-        $task->completed = true;
+        $task->completed = !$task->completed;
         $task->save();
 
-        return response()->json(['message' => 'Task marked as completed', 'task' => $task]);
+        $message = $task->completed ? 'Task marked as completed' : 'Task marked as incomplete';
+        return response()->json(['message' => $message, 'task' => $task]);
     }
 }

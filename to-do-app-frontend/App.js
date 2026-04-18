@@ -1,22 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { Image, View, StyleSheet, StatusBar } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import api from './src/services/api';
+import React, { useEffect, useState } from "react";
+import { Image, View, StyleSheet, StatusBar } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createStackNavigator } from "@react-navigation/stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Icon from "react-native-vector-icons/FontAwesome";
+import api from "./src/services/api";
+import { AUTH_TOKEN_KEY } from "./src/constants/storage";
 
-import LoginScreen from './src/screens/LoginScreen';
-import RegisterScreen from './src/screens/RegisterScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
-import EditProfileScreen from './src/screens/EditProfileScreen';
-import TasksScreen from './src/screens/TasksScreen';
-import CreateTaskScreen from './src/screens/CreateTaskScreen';
-import EditTaskScreen from './src/screens/EditTaskScreen';
-import TaskDetailsScreen from './src/screens/TaskDetailsScreen';
-import WelcomeScreen from './src/screens/WelcomeScreen';
-import Toast, { toastRef } from './src/components/Toast';
+import LoginScreen from "./src/screens/LoginScreen";
+import RegisterScreen from "./src/screens/RegisterScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
+import EditProfileScreen from "./src/screens/EditProfileScreen";
+import TasksScreen from "./src/screens/TasksScreen";
+import CreateTaskScreen from "./src/screens/CreateTaskScreen";
+import EditTaskScreen from "./src/screens/EditTaskScreen";
+import TaskDetailsScreen from "./src/screens/TaskDetailsScreen";
+import WelcomeScreen from "./src/screens/WelcomeScreen";
+import Toast, { toastRef } from "./src/components/Toast";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -25,7 +26,7 @@ const MIN_SPLASH_MS = 1500;
 
 const SplashScreen = () => (
   <View style={styles.splashContainer}>
-    <Image source={require('./assets/logoWhite.png')} style={styles.logo} />
+    <Image source={require("./assets/logoWhite.png")} style={styles.logo} />
   </View>
 );
 
@@ -35,14 +36,15 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
-          const iconName = route.name === 'Tasks' ? 'tasks' : 'user';
+          const iconName = route.name === "Tasks" ? "tasks" : "user";
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#451E5D',
-        tabBarInactiveTintColor: 'gray',
-        tabBarStyle: { backgroundColor: '#fff' },
+        tabBarActiveTintColor: "#451E5D",
+        tabBarInactiveTintColor: "gray",
+        tabBarStyle: { backgroundColor: "#fff" },
         tabBarLabelStyle: { fontSize: 12 },
-      })}>
+      })}
+    >
       <Tab.Screen name="Tasks" options={{ headerShown: false }}>
         {(props) => <TasksScreen {...props} userData={userData} />}
       </Tab.Screen>
@@ -69,14 +71,14 @@ export default function App() {
     const start = Date.now();
 
     async function checkAuthStatus() {
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       if (token) {
         try {
-          const userResponse = await api.get('/profile');
+          const userResponse = await api.get("/profile");
           setUserData(userResponse.data);
           setIsLoggedIn(true);
         } catch (error) {
-          console.error('Failed to fetch user data.', error);
+          console.error("Failed to fetch user data.", error);
           setIsLoggedIn(false);
         }
       } else {
@@ -118,16 +120,16 @@ export default function App() {
 
   const headerOptions = (title) => ({
     title,
-    headerStyle: { backgroundColor: '#451E5D' },
-    headerTitleStyle: { color: '#fff' },
-    headerTintColor: '#fff',
+    headerStyle: { backgroundColor: "#451E5D" },
+    headerTitleStyle: { color: "#fff" },
+    headerTintColor: "#fff",
   });
 
   return (
     <>
       <NavigationContainer>
         <StatusBar backgroundColor="#451E5D" />
-        <Stack.Navigator initialRouteName={isLoggedIn ? 'Main' : 'Welcome'}>
+        <Stack.Navigator initialRouteName={isLoggedIn ? "Main" : "Welcome"}>
           {!isLoggedIn ? (
             <>
               <Stack.Screen
@@ -163,19 +165,22 @@ export default function App() {
               <Stack.Screen
                 name="CreateTask"
                 component={CreateTaskScreen}
-                options={headerOptions('Create Task')}
+                options={headerOptions("Create Task")}
               />
               <Stack.Screen
                 name="EditTask"
                 component={EditTaskScreen}
-                options={headerOptions('Edit Task')}
+                options={headerOptions("Edit Task")}
               />
               <Stack.Screen
                 name="TaskDetails"
                 component={TaskDetailsScreen}
-                options={headerOptions('Task Details')}
+                options={headerOptions("Task Details")}
               />
-              <Stack.Screen name="EditProfile" options={headerOptions('Edit Profile')}>
+              <Stack.Screen
+                name="EditProfile"
+                options={headerOptions("Edit Profile")}
+              >
                 {(props) => (
                   <EditProfileScreen
                     {...props}
@@ -195,9 +200,9 @@ export default function App() {
 const styles = StyleSheet.create({
   splashContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#451E5D',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#451E5D",
   },
   logo: {
     width: 150,

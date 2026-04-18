@@ -55,16 +55,18 @@ class UserController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (Auth::attempt($request->only('email', 'password'))) {
-            $user = Auth::user();
-            $token = $user->createToken('API Token')->plainTextToken;  // Generate API token
+        $user = User::where('email', $request->email)->first();
 
-            return response()->json([
-                'token' => $token, // Send the token to the client
-            ]);
+        // Node.js bcrypt uses $2b$ prefix; PHP expects $2y$. They are identical algorithms.
+        $hash = $user ? str_replace('$2b$', '$2y$', $user->password) : '';
+
+        if (!$user || !password_verify($request->password, $hash)) {
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        return response()->json(['message' => 'Invalid credentials'], 401);
+        $token = $user->createToken('API Token')->plainTextToken;
+
+        return response()->json(['token' => $token]);
     }
     public function logout(Request $request)
     {

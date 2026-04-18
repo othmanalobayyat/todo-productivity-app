@@ -14,8 +14,9 @@ A full-stack mobile productivity application for managing tasks, subtasks, and c
 - [Screenshots](#screenshots)
 - [Project Structure](#project-structure)
 - [Setup Instructions](#setup-instructions)
-  - [Backend (Laravel)](#backend-laravel)
-  - [Frontend (React Native / Expo)](#frontend-react-native--expo)
+  - [Backend — Laravel](#backend--laravel)
+  - [Backend — Node.js](#backend--nodejs)
+  - [Frontend — React Native / Expo](#frontend--react-native--expo)
 - [Environment Variables](#environment-variables)
 - [Pre-publish Checklist](#pre-publish-checklist)
 
@@ -29,15 +30,17 @@ Todo Productivity App is a mobile-first productivity app that lets users registe
 
 ## Tech Stack
 
-| Layer     | Technology                                      |
-|-----------|-------------------------------------------------|
-| Frontend  | React Native, Expo ~54, React Navigation v7     |
-| UI        | React Native Paper, Expo Vector Icons           |
-| HTTP      | Axios                                           |
-| Storage   | AsyncStorage                                    |
-| Backend   | Laravel 11, PHP 8.2+                            |
-| Auth      | Laravel Sanctum (token-based)                   |
-| Database  | MySQL (production) / SQLite (local dev)         |
+| Layer              | Technology                                      |
+|--------------------|-------------------------------------------------|
+| Frontend           | React Native, Expo ~54, React Navigation v7     |
+| UI                 | React Native Paper, Expo Vector Icons           |
+| HTTP               | Axios                                           |
+| Storage            | AsyncStorage                                    |
+| Backend (primary)  | Laravel 11, PHP 8.2+                            |
+| Auth (Laravel)     | Laravel Sanctum (token-based)                   |
+| Backend (alt)      | Node.js, Express 5, Prisma ORM                  |
+| Auth (Node)        | JWT (jsonwebtoken)                              |
+| Database           | SQLite (local dev) / MySQL (production)         |
 
 ---
 
@@ -71,29 +74,34 @@ Todo Productivity App is a mobile-first productivity app that lets users registe
 
 ```
 to-do-app-workspace/
-├── to-do-app-backend/        # Laravel REST API
+├── to-do-app-backend/          # Laravel REST API (primary backend)
 │   ├── app/
-│   │   ├── Http/
-│   │   │   ├── Controllers/  # API controllers (Task, Subtask, Category, Auth, Admin...)
-│   │   │   ├── Middleware/
-│   │   │   └── Requests/
-│   │   └── Models/           # Eloquent models (User, Task, Subtask, TaskCategory)
-│   ├── database/
-│   │   └── migrations/       # All database migrations
-│   ├── routes/
-│   │   └── api.php           # API route definitions
-│   ├── .env.example          # Backend environment template
+│   │   ├── Http/Controllers/   # Task, Subtask, Category, Auth, Admin...
+│   │   └── Models/             # User, Task, Subtask, TaskCategory
+│   ├── database/migrations/    # All database migrations
+│   ├── routes/api.php          # API route definitions
+│   ├── .env.example            # Environment template
 │   └── composer.json
 │
-└── to-do-app-frontend/       # React Native (Expo) mobile app
+├── to-do-app-backend-node/     # Node.js REST API (alternative backend)
+│   ├── routes/                 # auth, tasks, subtasks, profile, categories
+│   ├── middleware/auth.js      # JWT auth middleware
+│   ├── prisma/schema.prisma    # Database schema
+│   ├── prismaClient.js         # Prisma client singleton
+│   ├── index.js                # Express app entry point
+│   ├── .env.example            # Environment template
+│   └── package.json
+│
+└── to-do-app-frontend/         # React Native (Expo) mobile app
     ├── src/
-    │   ├── screens/          # App screens (Login, Register, Tasks, TaskDetails, Profile...)
-    │   ├── components/       # Shared UI components (Header, Toast)
-    │   ├── services/         # Axios API service layer
-    │   └── config.js         # API base URL configuration
-    ├── assets/               # Images and fonts
-    ├── App.js                # Root component and navigation setup
-    ├── .env.example          # Frontend environment template
+    │   ├── screens/            # Login, Register, Tasks, TaskDetails, Profile...
+    │   ├── components/         # AppHeader, TaskItem, Toast
+    │   ├── services/           # Axios API client + authService
+    │   ├── constants/          # priorities, storage keys
+    │   └── utils/              # dateUtils
+    ├── assets/                 # Images and icons
+    ├── App.js                  # Root component and navigation setup
+    ├── .env.example            # Environment template
     └── package.json
 ```
 
@@ -112,7 +120,7 @@ to-do-app-workspace/
 
 ---
 
-### Backend (Laravel)
+### Backend — Laravel
 
 ```bash
 cd to-do-app-backend
@@ -129,17 +137,46 @@ php artisan key:generate
 # 4. Configure your database in .env, then run migrations
 php artisan migrate
 
-# 5. Start the development server
+# 5. (Optional) Seed default task categories
+php artisan db:seed --class=TaskCategorySeeder
+
+# 6. Start the development server
 php artisan serve
 ```
 
 The API will be available at `http://127.0.0.1:8000`.
 
-> **For mobile device access:** Replace `127.0.0.1` with your machine's local IP address (e.g. `192.168.1.x`) so your phone can reach the server on the same network.
+> **For mobile device access:** Replace `127.0.0.1` with your machine's local IP (e.g. `192.168.1.x`) so your phone can reach the server on the same network.
 
 ---
 
-### Frontend (React Native / Expo)
+### Backend — Node.js
+
+The Node.js backend is a drop-in alternative to the Laravel backend and exposes the same REST API surface.
+
+```bash
+cd to-do-app-backend-node
+
+# 1. Install dependencies
+npm install
+
+# 2. Copy and configure environment
+cp .env.example .env
+# Edit .env and set a strong JWT_SECRET
+
+# 3. Generate the Prisma client and create the SQLite database
+npx prisma generate
+npx prisma db push
+
+# 4. Start the server
+npm start
+```
+
+The API will be available at `http://localhost:3000`.
+
+---
+
+### Frontend — React Native / Expo
 
 ```bash
 cd to-do-app-frontend
@@ -162,25 +199,33 @@ Scan the QR code with the **Expo Go** app on your device, or press `a` for Andro
 
 ## Environment Variables
 
-### Backend — `to-do-app-backend/.env`
+### Laravel backend — `to-do-app-backend/.env`
 
-| Variable        | Description                                  |
-|-----------------|----------------------------------------------|
-| `APP_KEY`       | Laravel application key (generated by artisan) |
-| `DB_CONNECTION` | Database driver (`mysql` or `sqlite`)        |
-| `DB_HOST`       | Database host                                |
-| `DB_PORT`       | Database port (default `3306` for MySQL)     |
-| `DB_DATABASE`   | Database name                                |
-| `DB_USERNAME`   | Database user                                |
-| `DB_PASSWORD`   | Database password                            |
+| Variable        | Description                                      |
+|-----------------|--------------------------------------------------|
+| `APP_KEY`       | Laravel app key — run `php artisan key:generate` |
+| `DB_CONNECTION` | Database driver (`mysql` or `sqlite`)            |
+| `DB_DATABASE`   | Database name or SQLite file path                |
+| `DB_USERNAME`   | Database username                                |
+| `DB_PASSWORD`   | Database password                                |
 
-See `to-do-app-backend/.env.example` for the full list of variables.
+See `to-do-app-backend/.env.example` for the full list.
+
+### Node.js backend — `to-do-app-backend-node/.env`
+
+| Variable       | Description                                    |
+|----------------|------------------------------------------------|
+| `DATABASE_URL` | Prisma database URL (e.g. `file:./dev.db`)     |
+| `JWT_SECRET`   | Secret used to sign JWT tokens                 |
+| `PORT`         | Server port (default `3000`)                   |
+
+See `to-do-app-backend-node/.env.example` for the full list.
 
 ### Frontend — `to-do-app-frontend/.env`
 
 | Variable                    | Description                              |
 |-----------------------------|------------------------------------------|
-| `EXPO_PUBLIC_API_BASE_URL`  | Full URL of the Laravel backend API      |
+| `EXPO_PUBLIC_API_BASE_URL`  | Full URL of the active backend API       |
 
 Example:
 
@@ -195,9 +240,7 @@ EXPO_PUBLIC_API_BASE_URL=http://192.168.1.x:8000/api
 ## Pre-publish Checklist
 
 - [ ] Replace placeholder screenshots in the README
-- [ ] Verify `to-do-app-backend/.env` is NOT committed (covered by `.gitignore`)
-- [ ] Verify `to-do-app-frontend/.env` is NOT committed (covered by `.gitignore`)
-- [ ] Remove `database/database.sqlite` from version control if it contains real data
-- [ ] Verify `storage/` and `bootstrap/cache/` are excluded by `.gitignore`
+- [ ] Verify `.env` files are not committed: `git ls-files | grep '\.env$'` should return nothing
+- [ ] Verify `storage/`, `bootstrap/cache/`, and `*.db` files are excluded
 - [ ] Add a `LICENSE` file if you wish to open-source the project
-- [ ] Consider renaming the repo to something descriptive (e.g. `todo-productivity-app`)
+- [ ] Consider renaming the GitHub repo to something descriptive (e.g. `todo-productivity-app`)

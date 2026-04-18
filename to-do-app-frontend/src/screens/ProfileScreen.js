@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showToast } from '../components/Toast';
-import HeaderComponentProfile from '../components/HeaderComponentProfile';
+import AppHeader from '../components/AppHeader';
 import api from '../services/api';
+import { AUTH_TOKEN_KEY } from '../constants/storage';
 
 export default function ProfileScreen({ navigation, userData, onLogoutSuccess }) {
   const [aboutVisible, setAboutVisible] = useState(false);
@@ -20,12 +21,12 @@ export default function ProfileScreen({ navigation, userData, onLogoutSuccess })
   const handleLogout = async () => {
     try {
       await api.post('/logout');
-      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
       onLogoutSuccess();
       showToast('Logged out successfully', 'success');
     } catch (error) {
       console.error('Error logging out:', error);
-      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
       onLogoutSuccess();
       showToast('Error logging out');
     }
@@ -36,7 +37,7 @@ export default function ProfileScreen({ navigation, userData, onLogoutSuccess })
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#451E5D" />
-      <HeaderComponentProfile />
+      <AppHeader title="My Profile" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Avatar */}

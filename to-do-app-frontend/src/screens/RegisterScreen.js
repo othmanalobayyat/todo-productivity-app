@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import api from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { finalizeAuth } from '../services/authService';
 import { showToast } from '../components/Toast';
 
 export default function RegisterScreen({ navigation, onRegisterSuccess }) {
@@ -27,15 +27,7 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
 
     try {
       const response = await api.post('/register', { name, email, password });
-      const { token } = response.data;
-      await AsyncStorage.setItem('auth_token', token);
-
-      const userResponse = await api.get('/profile', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const user = userResponse.data;
-      onRegisterSuccess(user);
+      await finalizeAuth(response.data.token, onRegisterSuccess);
     } catch (error) {
       console.error('Registration error:', error.response?.data || error.message);
       showToast('Registration failed. Please try again.');

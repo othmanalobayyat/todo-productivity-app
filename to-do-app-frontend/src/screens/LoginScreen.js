@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import api from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { finalizeAuth } from '../services/authService';
 import { showToast } from '../components/Toast';
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
@@ -13,10 +13,7 @@ const handleLogin = async () => {
     try {
       const response = await api.post('/login', { email, password });
       if (response.data.token) {
-        await AsyncStorage.setItem('auth_token', response.data.token);
-        const userResponse = await api.get('/profile');
-        const user = userResponse.data;
-        onLoginSuccess(user);
+        await finalizeAuth(response.data.token, onLoginSuccess);
       } else {
         showToast('Login failed, please try again.');
       }
