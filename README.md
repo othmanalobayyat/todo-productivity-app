@@ -1,246 +1,218 @@
 # Todo Productivity App
 
-A full-stack mobile productivity application for managing tasks, subtasks, and categories. Built with React Native (Expo) on the frontend and Laravel on the backend.
+A full-stack mobile productivity app that helps users build consistent habits through task management, smart insights, and daily streak tracking.
 
-> **Note:** This project was originally developed as part of a university course (*Web & Mobile Development 2*) in collaboration with a teammate. After the course, I continued improving and extending it independently — adding features like subtasks, task priority, dashboard insights, profile management, and more.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Features](#features)
-- [Screenshots](#screenshots)
-- [Project Structure](#project-structure)
-- [Setup Instructions](#setup-instructions)
-  - [Backend — Laravel](#backend--laravel)
-  - [Backend — Node.js](#backend--nodejs)
-  - [Frontend — React Native / Expo](#frontend--react-native--expo)
-- [Environment Variables](#environment-variables)
-- [Pre-publish Checklist](#pre-publish-checklist)
+> **Note:** Originally developed as part of a university course (_Web & Mobile Development 2_) with a teammate. I continued building it independently after the course, adding the streak system, smart insights, calendar view, subtasks, and more.
 
 ---
 
-## Overview
+## ✨ Highlights
 
-Todo Productivity App is a mobile-first productivity app that lets users register, log in, and manage their daily tasks. It supports task categories, priorities, subtasks, a dashboard with live insights, and user profiles — all backed by a RESTful Laravel API secured with Laravel Sanctum token authentication.
+- **Daily streak system** — stay consistent with a streak that tracks days you completed tasks
+- **Smart insights** — context-aware messages that surface overdue work, high-priority items, and wins
+- **Clean mobile UX** — minimal design, fully clickable cards, smooth navigation
+- **Dual backend support** — run Laravel or Node.js interchangeably with no frontend changes
 
 ---
 
-## Tech Stack
+## 🔄 Dual Backend Architecture
 
-| Layer              | Technology                                      |
-|--------------------|-------------------------------------------------|
-| Frontend           | React Native, Expo ~54, React Navigation v7     |
-| UI                 | React Native Paper, Expo Vector Icons           |
-| HTTP               | Axios                                           |
-| Storage            | AsyncStorage                                    |
-| Backend (primary)  | Laravel 11, PHP 8.2+                            |
-| Auth (Laravel)     | Laravel Sanctum (token-based)                   |
-| Backend (alt)      | Node.js, Express 5, Prisma ORM                  |
-| Auth (Node)        | JWT (jsonwebtoken)                              |
-| Database           | SQLite (local dev) / MySQL (production)         |
+Both backends implement the same API contract (same endpoints and response structure), allowing seamless switching without frontend changes. Switch backends by changing one environment variable. This was a deliberate design choice to keep the frontend decoupled and the stack flexible.
 
 ---
 
 ## Features
 
-- User registration and login (token-based authentication)
+### Task Management
+
 - Create, edit, and delete tasks
-- Assign tasks to custom categories
-- Set task priority (low / medium / high)
-- Add and manage subtasks with live completion progress tracking
-- Dashboard with insights: overdue tasks, due today, and high-priority tasks
-- View full task details
-- User profile screen
-- Admin panel for user management
-- Bottom tab navigation
-- Toast notifications for feedback
+- Set priority (low / medium / high)
+- Assign due dates and categories
+- Filter by status (all / pending / completed) and sort by priority or due date
+- Fully clickable task cards for fast navigation
+
+### Smart Insights
+
+- A dynamic message at the top of the tasks screen surfaces what needs attention — overdue tasks, high-priority items, tasks due today, or an all-clear when everything's done.
+- Driven by real task state, not static copy.
+
+### Streak System
+
+- Tracks consecutive days where at least one task was completed.
+- Uses the `completed_at` timestamp stored on each task.
+- Accounts for local device time so midnight doesn't reset a streak mid-session.
+
+### Calendar View
+
+- Visual calendar with marked dates for tasks that have due dates.
+- Tap any date to see the tasks due on that day.
+
+### Subtasks
+
+- Each task can have multiple subtasks.
+- Add, complete, and delete subtasks from the task detail screen.
+
+### Profile & Auth
+
+- Register / login with token-based authentication.
+- Edit profile name and view account details.
+- "About Developer" section built into the profile screen.
 
 ---
 
-## Screenshots
+## Tech Stack
 
-> Screenshots coming soon. Place images in `docs/screenshots/` and reference them here.
+Built with a production-style architecture supporting dual backends and a shared API contract.
 
-| Welcome | Login | Tasks | Task Detail |
-|---------|-------|-------|-------------|
-| _placeholder_ | _placeholder_ | _placeholder_ | _placeholder_ |
+| Layer             | Technology                                  |
+| ----------------- | ------------------------------------------- |
+| Frontend          | React Native, Expo ~54, React Navigation v7 |
+| UI components     | React Native Paper, Vector Icons, Calendars |
+| HTTP client       | Axios                                       |
+| Local storage     | AsyncStorage                                |
+| Backend (primary) | Laravel 11, PHP 8.2+, Laravel Sanctum       |
+| Backend (alt)     | Node.js, Express 5, Prisma ORM, JWT         |
+| Database          | SQLite (dev) / MySQL (production)           |
 
 ---
 
-## Project Structure
+## Screens
+
+| Screen                 | What it does                                                        |
+| ---------------------- | ------------------------------------------------------------------- |
+| **Tasks**              | Main hub — lists tasks with live insight message and streak counter |
+| **Task Detail**        | Full task view with subtask management                              |
+| **Create / Edit Task** | Form with title, description, priority, due date, and category      |
+| **Calendar**           | Date picker with task dots; tap a date to filter tasks              |
+| **Profile**            | Account info, edit profile, logout                                  |
+
+---
+
+## How It Works
 
 ```
-to-do-app-workspace/
-├── to-do-app-backend/          # Laravel REST API (primary backend)
-│   ├── app/
-│   │   ├── Http/Controllers/   # Task, Subtask, Category, Auth, Admin...
-│   │   └── Models/             # User, Task, Subtask, TaskCategory
-│   ├── database/migrations/    # All database migrations
-│   ├── routes/api.php          # API route definitions
-│   ├── .env.example            # Environment template
-│   └── composer.json
-│
-├── to-do-app-backend-node/     # Node.js REST API (alternative backend)
-│   ├── routes/                 # auth, tasks, subtasks, profile, categories
-│   ├── middleware/auth.js      # JWT auth middleware
-│   ├── prisma/schema.prisma    # Database schema
-│   ├── prismaClient.js         # Prisma client singleton
-│   ├── index.js                # Express app entry point
-│   ├── .env.example            # Environment template
-│   └── package.json
-│
-└── to-do-app-frontend/         # React Native (Expo) mobile app
-    ├── src/
-    │   ├── screens/            # Login, Register, Tasks, TaskDetails, Profile...
-    │   ├── components/         # AppHeader, TaskItem, Toast
-    │   ├── services/           # Axios API client + authService
-    │   ├── constants/          # priorities, storage keys
-    │   └── utils/              # dateUtils
-    ├── assets/                 # Images and icons
-    ├── App.js                  # Root component and navigation setup
-    ├── .env.example            # Environment template
-    └── package.json
+React Native (Expo)
+       │
+       │  Axios (token in header)
+       ▼
+REST API  ──────┬──── Laravel (Sanctum auth)
+                └──── Node.js / Express (JWT auth)
+                            │
+                            ▼
+                     SQLite / MySQL
 ```
+
+The frontend connects to whichever backend is running — switch by updating `EXPO_PUBLIC_API_BASE_URL` in `.env`. Both backends expose the same API surface.
 
 ---
 
-## Setup Instructions
+## Smart Features — Under the Hood
+
+### Insights
+
+Each time the tasks screen loads, it computes:
+
+- **Overdue** — incomplete tasks with a past due date
+- **Due today** — incomplete tasks due on the current local date
+- **High priority pending** — incomplete tasks with `priority = "high"`
+
+The insight message prioritises urgency: overdue → high priority → due today → all done → general encouragement.
+
+### Streak
+
+The streak counter walks backwards from today (or yesterday, if nothing's been completed today yet) through the `completed_at` dates on tasks. Each consecutive day with at least one completion adds 1. The count stops at the first gap.
+
+All date comparisons use the device's local clock, not UTC, so the streak never breaks at midnight due to a timezone offset.
+
+---
+
+## Setup
 
 ### Prerequisites
 
-- PHP 8.2+
-- Composer
+- PHP 8.2+ and Composer
 - Node.js 18+
-- MySQL (or use the included SQLite for local dev)
-- Expo CLI (`npm install -g expo-cli`) or use `npx expo`
-- A physical device or emulator (Android / iOS)
+- Expo Go app on your device (or Android/iOS emulator)
 
 ---
 
-### Backend — Laravel
+### Laravel Backend
 
 ```bash
 cd to-do-app-backend
-
-# 1. Install PHP dependencies
 composer install
-
-# 2. Copy and configure environment
 cp .env.example .env
-
-# 3. Generate application key
 php artisan key:generate
-
-# 4. Configure your database in .env, then run migrations
 php artisan migrate
-
-# 5. (Optional) Seed default task categories
-php artisan db:seed --class=TaskCategorySeeder
-
-# 6. Start the development server
+# Run the completed_at migration if not included above:
+# php artisan migrate --path=database/migrations/2026_04_19_000000_add_completed_at_to_tasks_table.php
 php artisan serve
 ```
 
-The API will be available at `http://127.0.0.1:8000`.
-
-> **For mobile device access:** Replace `127.0.0.1` with your machine's local IP (e.g. `192.168.1.x`) so your phone can reach the server on the same network.
+API available at `http://127.0.0.1:8000`.
 
 ---
 
-### Backend — Node.js
-
-The Node.js backend is a drop-in alternative to the Laravel backend and exposes the same REST API surface.
+### Node.js Backend
 
 ```bash
 cd to-do-app-backend-node
-
-# 1. Install dependencies
 npm install
-
-# 2. Copy and configure environment
-cp .env.example .env
-# Edit .env and set a strong JWT_SECRET
-
-# 3. Generate the Prisma client and create the SQLite database
+cp .env.example .env   # set JWT_SECRET and DATABASE_URL
 npx prisma generate
 npx prisma db push
-
-# 4. Start the server
 npm start
 ```
 
-The API will be available at `http://localhost:3000`.
+API available at `http://localhost:3000`.
 
 ---
 
-### Frontend — React Native / Expo
+### Frontend
 
 ```bash
 cd to-do-app-frontend
-
-# 1. Install dependencies
 npm install
-
-# 2. Create a .env file and set your backend URL
 cp .env.example .env
-# Then edit .env and set:
+# Set EXPO_PUBLIC_API_BASE_URL to your backend's local IP, e.g.:
 # EXPO_PUBLIC_API_BASE_URL=http://192.168.1.x:8000/api
-
-# 3. Start Expo
 npx expo start
 ```
 
-Scan the QR code with the **Expo Go** app on your device, or press `a` for Android emulator / `i` for iOS simulator.
+Scan the QR code with Expo Go, or press `a` / `i` for an emulator.
+
+> Use your machine's local IP (not `localhost`) when testing on a physical device.
 
 ---
 
 ## Environment Variables
 
-### Laravel backend — `to-do-app-backend/.env`
+**Laravel** — `to-do-app-backend/.env`
 
-| Variable        | Description                                      |
-|-----------------|--------------------------------------------------|
-| `APP_KEY`       | Laravel app key — run `php artisan key:generate` |
-| `DB_CONNECTION` | Database driver (`mysql` or `sqlite`)            |
-| `DB_DATABASE`   | Database name or SQLite file path                |
-| `DB_USERNAME`   | Database username                                |
-| `DB_PASSWORD`   | Database password                                |
+| Variable        | Description                       |
+| --------------- | --------------------------------- |
+| `APP_KEY`       | Run `php artisan key:generate`    |
+| `DB_CONNECTION` | `sqlite` or `mysql`               |
+| `DB_DATABASE`   | Database name or SQLite file path |
 
-See `to-do-app-backend/.env.example` for the full list.
+**Node.js** — `to-do-app-backend-node/.env`
 
-### Node.js backend — `to-do-app-backend-node/.env`
+| Variable       | Description                         |
+| -------------- | ----------------------------------- |
+| `DATABASE_URL` | Prisma DB URL, e.g. `file:./dev.db` |
+| `JWT_SECRET`   | Secret for signing JWT tokens       |
+| `PORT`         | Server port (default `3000`)        |
 
-| Variable       | Description                                    |
-|----------------|------------------------------------------------|
-| `DATABASE_URL` | Prisma database URL (e.g. `file:./dev.db`)     |
-| `JWT_SECRET`   | Secret used to sign JWT tokens                 |
-| `PORT`         | Server port (default `3000`)                   |
+**Frontend** — `to-do-app-frontend/.env`
 
-See `to-do-app-backend-node/.env.example` for the full list.
-
-### Frontend — `to-do-app-frontend/.env`
-
-| Variable                    | Description                              |
-|-----------------------------|------------------------------------------|
-| `EXPO_PUBLIC_API_BASE_URL`  | Full URL of the active backend API       |
-
-Example:
-
-```
-EXPO_PUBLIC_API_BASE_URL=http://192.168.1.x:8000/api
-```
-
-> Use your machine's local IP when testing on a physical device. For an Android emulator use `http://10.0.2.2:8000/api`; for an iOS simulator use `http://localhost:8000/api`.
+| Variable                   | Description                        |
+| -------------------------- | ---------------------------------- |
+| `EXPO_PUBLIC_API_BASE_URL` | Full URL of the active backend API |
 
 ---
 
-## Pre-publish Checklist
+## Notes
 
-- [ ] Replace placeholder screenshots in the README
-- [ ] Verify `.env` files are not committed: `git ls-files | grep '\.env$'` should return nothing
-- [ ] Verify `storage/`, `bootstrap/cache/`, and `*.db` files are excluded
-- [ ] Add a `LICENSE` file if you wish to open-source the project
-- [ ] Consider renaming the GitHub repo to something descriptive (e.g. `todo-productivity-app`)
+- Minimal UI philosophy — no clutter, just what you need to get things done.
+- Date handling uses local device time throughout to avoid timezone-related bugs.
+- Both backends are fully interchangeable — same frontend, same API contract.
