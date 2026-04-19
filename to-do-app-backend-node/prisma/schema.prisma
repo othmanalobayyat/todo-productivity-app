@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model cache {
@@ -97,7 +98,7 @@ model subtasks {
   id         Int                       @id @default(autoincrement())
   task_id    Int
   title      String
-  completed  Boolean @default(dbgenerated("'0'"))
+  completed  Boolean @default(false)
   created_at DateTime?
   updated_at DateTime?
   tasks      tasks                     @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -117,7 +118,7 @@ model tasks {
   category_id     Int?
   title           String
   description     String?
-  completed       Boolean @default(dbgenerated("'0'"))
+  completed       Boolean @default(false)
   completed_at    DateTime?
   due_date        String?
   created_at      DateTime?
@@ -137,6 +138,6 @@ model users {
   remember_token    String?
   created_at        DateTime?
   updated_at        DateTime?
-  is_admin          Boolean @default(dbgenerated("'0'"))
+  is_admin          Boolean @default(false)
   tasks             tasks[]
 }
