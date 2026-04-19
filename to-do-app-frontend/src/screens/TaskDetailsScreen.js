@@ -39,7 +39,7 @@ export default function TaskDetailsScreen({ route }) {
 
   async function handleAddSubtask() {
     const title = newSubtaskTitle.trim();
-    if (!title) return;
+    if (!title || adding) return;
     setAdding(true);
     try {
       await api.post(`/tasks/${task.id}/subtasks`, { title });
