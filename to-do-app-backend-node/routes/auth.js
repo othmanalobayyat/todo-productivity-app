@@ -4,11 +4,21 @@ var router = express.Router();
 var bcrypt = require("bcrypt");
 var jwt = require("jsonwebtoken");
 var authMiddleware = require("../middleware/auth.js");
+var rateLimit = require("express-rate-limit");
 
 var { body, validationResult } = require("express-validator");
 
+var authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: "Too many attempts. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 router.post(
   "/register",
+  authLimiter,
   [
     body("name").notEmpty(),
     body("email").isEmail(),
@@ -47,6 +57,7 @@ router.post(
 
 router.post(
   "/login",
+  authLimiter,
   [body("email").isEmail(), body("password").notEmpty()],
   async function (req, res) {
     const errors = validationResult(req);
@@ -62,7 +73,7 @@ router.post(
       }
       var match = await bcrypt.compare(req.body.password, user.password);
       if (!match) {
-        return res.status(401).json({ message: "Invalid credentials" });
+        return res.status(401).json({ message: "Invalid email or password." });
       }
       delete user.password;
       var token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {

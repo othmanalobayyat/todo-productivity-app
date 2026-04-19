@@ -32,7 +32,7 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
     if (!email.trim()) newErrors.email = 'Email is required.';
     else if (!isValidEmail(email.trim())) newErrors.email = 'Enter a valid email address.';
     if (!password) newErrors.password = 'Password is required.';
-    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters.';
+    else if (password.length < 8) newErrors.password = 'Password must be at least 8 characters.';
     if (!passwordConfirmation) newErrors.passwordConfirmation = 'Please confirm your password.';
     else if (password !== passwordConfirmation) newErrors.passwordConfirmation = 'Passwords do not match.';
     setErrors(newErrors);
@@ -135,11 +135,11 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>Password <Text style={styles.labelHint}>(min. 8 characters)</Text></Text>
             <View style={rowStyle('password')}>
               <TextInput
                 ref={passwordRef}
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 placeholderTextColor="#B0AABF"
                 secureTextEntry={!showPassword}
                 style={styles.inputInner}
@@ -268,6 +268,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3D2055',
     letterSpacing: 0.2,
+  },
+  labelHint: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#9A94A8',
   },
   input: {
     backgroundColor: '#F8F6FB',
