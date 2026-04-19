@@ -1,49 +1,51 @@
 import React from "react";
-import { StyleSheet, Text, View, Image, TouchableOpacity, Pressable, StatusBar } from "react-native";
+import {
+  StyleSheet, Text, View, Image,
+  TouchableOpacity, Pressable, StatusBar, Dimensions,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+
+const { height } = Dimensions.get("window");
 
 export default function WelcomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      <View style={styles.logoWrapper}>
-        <Image
-          source={require("../../assets/logo.png")}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-      </View>
-
-      <View style={styles.imageContainer}>
+      {/* Illustration */}
+      <View style={styles.illustrationArea}>
         <Image
           source={require("../../assets/background.jpg")}
-          style={styles.heroImage}
+          style={styles.illustration}
           resizeMode="contain"
         />
       </View>
 
-      <View style={styles.copyContainer}>
-        <Text style={styles.title}>Get things done.</Text>
-        <Text style={styles.subtitle}>
-          Plan, organize, and accomplish — everything in one place.
-        </Text>
-      </View>
+      {/* Copy */}
+      <Text style={styles.headline}>Get things done,{"\n"}your way.</Text>
+      <Text style={styles.subtitle}>
+        Plan tasks, set deadlines, and stay on top of everything — beautifully.
+      </Text>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.loginButton}
-          onPress={() => navigation.navigate('Login')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.loginButtonText}>Log In</Text>
-        </TouchableOpacity>
-        <Pressable
-          style={({ pressed }) => [styles.signupButton, pressed && styles.signupButtonPressed]}
-          onPress={() => navigation.navigate('Register')}
-        >
-          <Text style={styles.signupButtonText}>Sign Up</Text>
-        </Pressable>
-      </View>
+      {/* Spacer */}
+      <View style={{ flex: 1 }} />
+
+      {/* CTAs */}
+      <TouchableOpacity
+        style={styles.primaryBtn}
+        onPress={() => navigation.navigate("Login")}
+        activeOpacity={0.88}
+      >
+        <Text style={styles.primaryBtnText}>Log In</Text>
+        <Ionicons name="arrow-forward" size={18} color="#fff" />
+      </TouchableOpacity>
+
+      <Pressable
+        style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryBtnPressed]}
+        onPress={() => navigation.navigate("Register")}
+      >
+        <Text style={styles.secondaryBtnText}>Create a Free Account</Text>
+      </Pressable>
     </View>
   );
 }
@@ -52,86 +54,68 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    alignItems: "center",
     paddingHorizontal: 28,
     paddingTop: 56,
-    paddingBottom: 28,
+    paddingBottom: 40,
   },
-  logoWrapper: {
-    backgroundColor: "#f4eff8",
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginBottom: 20,
+  illustrationArea: {
+    width: "100%",
+    height: height * 0.34,
+    marginBottom: 28,
   },
-  logoImage: {
-    width: 140,
-    height: 36,
-  },
-  imageContainer: {
-    width: "90%",
-    flex: 1,
-    marginBottom: 8,
-  },
-  heroImage: {
+  illustration: {
     width: "100%",
     height: "100%",
   },
-  copyContainer: {
-    width: "100%",
-    alignItems: "center",
-    marginBottom: 28,
-    paddingHorizontal: 8,
-  },
-  title: {
-    fontSize: 26,
+  headline: {
+    fontSize: 34,
     fontWeight: "800",
-    color: "#451E5D",
-    marginBottom: 8,
-    textAlign: "center",
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#9491c7",
-    textAlign: "center",
-    lineHeight: 21,
-  },
-  buttonContainer: {
-    width: "100%",
-    alignItems: "center",
-    paddingBottom: 16,
-  },
-  loginButton: {
-    backgroundColor: "#451E5D",
-    width: "100%",
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: "center",
+    color: "#1A0A2E",
+    letterSpacing: -0.6,
+    lineHeight: 44,
     marginBottom: 10,
   },
-  loginButtonText: {
+  subtitle: {
+    fontSize: 15,
+    color: "#7C7A8E",
+    lineHeight: 23,
+  },
+  primaryBtn: {
+    backgroundColor: "#451E5D",
+    paddingVertical: 16,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 12,
+    shadowColor: "#451E5D",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  primaryBtnText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
-  signupButton: {
-    borderWidth: 1.5,
-    borderColor: "#451E5D",
-    width: "100%",
-    paddingVertical: 15,
-    borderRadius: 12,
+  secondaryBtn: {
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: "center",
-    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: "#D4C5E2",
   },
-  signupButtonPressed: {
-    backgroundColor: "#f0eaf5",
+  secondaryBtnPressed: {
+    backgroundColor: "#f5eefa",
+    borderColor: "#451E5D",
   },
-  signupButtonText: {
+  secondaryBtnText: {
     color: "#451E5D",
     fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
 });

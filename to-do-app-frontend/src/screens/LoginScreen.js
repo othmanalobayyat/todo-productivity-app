@@ -1,6 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ScrollView, StatusBar, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { finalizeAuth } from '../services/authService';
 import { showToast } from '../components/Toast';
@@ -13,19 +17,15 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [focused, setFocused] = useState(null);
 
   const passwordRef = useRef(null);
 
   const validate = () => {
     const newErrors = {};
-    if (!email.trim()) {
-      newErrors.email = 'Email is required.';
-    } else if (!isValidEmail(email.trim())) {
-      newErrors.email = 'Enter a valid email address.';
-    }
-    if (!password) {
-      newErrors.password = 'Password is required.';
-    }
+    if (!email.trim()) newErrors.email = 'Email is required.';
+    else if (!isValidEmail(email.trim())) newErrors.email = 'Enter a valid email address.';
+    if (!password) newErrors.password = 'Password is required.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -40,94 +40,130 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
       } else {
         showToast('Login failed. Please try again.');
       }
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch {
       showToast('Incorrect email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const inputStyle = (field) => [
+    styles.input,
+    focused === field && styles.inputFocused,
+    errors[field] && styles.inputError,
+  ];
+
+  const rowStyle = (field) => [
+    styles.inputRow,
+    focused === field && styles.inputFocused,
+    errors[field] && styles.inputError,
+  ];
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Icon name="arrow-back-outline" size={24} color="#0f0835" />
-        </TouchableOpacity>
-
-        <View style={styles.textContainer}>
-          <Text style={styles.header}>Welcome back</Text>
-          <Text style={styles.subheader}>Log in to your account</Text>
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            placeholder="you@example.com"
-            placeholderTextColor="#b0aec8"
-            style={styles.input}
-            value={email}
-            onChangeText={(v) => { setEmail(v); setErrors((e) => ({ ...e, email: null })); }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            textContentType="emailAddress"
-            autoFocus
-            returnKeyType="next"
-            onSubmitEditing={() => passwordRef.current?.focus()}
-          />
-          <View style={[styles.underline, errors.email && styles.underlineError]} />
-          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-
-          <Text style={[styles.label, { marginTop: 16 }]}>Password</Text>
-          <View style={styles.passwordRow}>
-            <TextInput
-              ref={passwordRef}
-              placeholder="Your password"
-              placeholderTextColor="#b0aec8"
-              secureTextEntry={!showPassword}
-              style={[styles.input, styles.passwordInput]}
-              value={password}
-              onChangeText={(v) => { setPassword(v); setErrors((e) => ({ ...e, password: null })); }}
-              autoComplete="password"
-              textContentType="password"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setShowPassword((v) => !v)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Icon name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#9491c7" />
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.underline, errors.password && styles.underlineError]} />
-          {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-        </View>
-
-        <TouchableOpacity style={styles.forgotPasswordContainer} onPress={() => showToast('Password reset coming soon.')}>
-          <Text style={styles.forgotPassword}>Forgot password?</Text>
-        </TouchableOpacity>
-
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Back */}
         <TouchableOpacity
-          style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons name="arrow-back" size={20} color="#1A0A2E" />
+        </TouchableOpacity>
+
+        {/* Logo */}
+        <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Log in to your account to continue</Text>
+        </View>
+
+        {/* Fields */}
+        <View style={styles.fields}>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              placeholder="you@example.com"
+              placeholderTextColor="#B0AABF"
+              style={inputStyle('email')}
+              value={email}
+              onChangeText={(v) => { setEmail(v); setErrors((e) => ({ ...e, email: null })); }}
+              onFocus={() => setFocused('email')}
+              onBlur={() => setFocused(null)}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
+              autoFocus
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+            />
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Password</Text>
+            <View style={rowStyle('password')}>
+              <TextInput
+                ref={passwordRef}
+                placeholder="Your password"
+                placeholderTextColor="#B0AABF"
+                secureTextEntry={!showPassword}
+                style={styles.inputInner}
+                value={password}
+                onChangeText={(v) => { setPassword(v); setErrors((e) => ({ ...e, password: null })); }}
+                onFocus={() => setFocused('password')}
+                onBlur={() => setFocused(null)}
+                autoComplete="password"
+                textContentType="password"
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword((v) => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.eyeBtn}
+              >
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#9A94A8" />
+              </TouchableOpacity>
+            </View>
+            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+          </View>
+        </View>
+
+        {/* Forgot */}
+        <TouchableOpacity
+          style={styles.forgotRow}
+          onPress={() => showToast('Password reset coming soon.')}
+        >
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </TouchableOpacity>
+
+        {/* CTA */}
+        <TouchableOpacity
+          style={[styles.primaryBtn, isLoading && styles.btnDisabled]}
           onPress={handleLogin}
           disabled={isLoading}
-          activeOpacity={0.85}
+          activeOpacity={0.88}
         >
           {isLoading
             ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.loginButtonText}>Log In</Text>
+            : <Text style={styles.primaryBtnText}>Log In</Text>
           }
         </TouchableOpacity>
 
-        <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>Don't have an account?</Text>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account?</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')} hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}>
-            <Text style={styles.signUpLink}> Sign up</Text>
+            <Text style={styles.footerLink}> Sign up</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -138,110 +174,138 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
+    backgroundColor: '#fff',
+    paddingHorizontal: 28,
+    paddingTop: 56,
+    paddingBottom: 40,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F4F2F8',
+    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
-    padding: 30,
+    marginBottom: 16,
   },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-  },
-  textContainer: {
-    alignItems: 'flex-start',
-    marginBottom: 40,
-    marginTop: 30,
+  logo: {
+    width: 180,
+    height: 50,
+    alignSelf: 'center',
+    marginBottom: 24,
   },
   header: {
-    fontSize: 38,
-    fontWeight: 'bold',
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#1A0A2E',
+    letterSpacing: -0.5,
     marginBottom: 6,
-    color: '#451E5D',
   },
-  subheader: {
-    fontSize: 16,
-    color: '#9491c7',
+  subtitle: {
+    fontSize: 15,
+    color: '#7C7A8E',
+    lineHeight: 22,
   },
-  inputContainer: {
-    width: '100%',
+  fields: {
+    gap: 20,
     marginBottom: 8,
+  },
+  fieldGroup: {
+    gap: 6,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#451E5D',
-    marginBottom: 4,
-    letterSpacing: 0.3,
+    color: '#3D2055',
+    letterSpacing: 0.2,
   },
   input: {
-    fontSize: 16,
-    color: '#05017b',
-    paddingVertical: 10,
-    paddingHorizontal: 2,
+    backgroundColor: '#F8F6FB',
+    borderWidth: 1.5,
+    borderColor: '#E8E2F0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#1A0A2E',
   },
-  passwordRow: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F8F6FB',
+    borderWidth: 1.5,
+    borderColor: '#E8E2F0',
+    borderRadius: 12,
+    paddingRight: 14,
   },
-  passwordInput: {
+  inputInner: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#1A0A2E',
   },
-  eyeButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 8,
+  inputFocused: {
+    borderColor: '#451E5D',
+    backgroundColor: '#fff',
   },
-  underline: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    marginBottom: 4,
+  inputError: {
+    borderColor: '#E05555',
+    backgroundColor: '#FFF8F8',
   },
-  underlineError: {
-    borderBottomColor: '#c0392b',
+  eyeBtn: {
+    padding: 4,
   },
   errorText: {
     fontSize: 12,
-    color: '#c0392b',
-    marginBottom: 4,
+    color: '#E05555',
     marginTop: 2,
   },
-  forgotPasswordContainer: {
+  forgotRow: {
     alignSelf: 'flex-end',
-    marginBottom: 24,
-    marginTop: 4,
+    marginBottom: 28,
+    marginTop: 12,
   },
-  forgotPassword: {
+  forgotText: {
     color: '#451E5D',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
-  loginButton: {
+  primaryBtn: {
     backgroundColor: '#451E5D',
-    width: '100%',
-    paddingVertical: 15,
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
-    borderRadius: 10,
-    marginBottom: 20,
+    justifyContent: 'center',
+    marginBottom: 28,
+    shadowColor: '#451E5D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  buttonDisabled: {
-    opacity: 0.65,
+  btnDisabled: {
+    opacity: 0.6,
   },
-  loginButtonText: {
+  primaryBtnText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
-  signUpContainer: {
+  footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
   },
-  signUpText: {
+  footerText: {
     fontSize: 14,
-    color: '#9491c7',
+    color: '#7C7A8E',
   },
-  signUpLink: {
+  footerLink: {
     fontSize: 14,
     color: '#451E5D',
     fontWeight: '700',
