@@ -100,101 +100,123 @@ export default function CreateTaskScreen({ navigation }) {
       <StatusBar backgroundColor="#451E5D" barStyle="light-content" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
 
-        <Icon name="task" size={50} color="#451E5D" style={styles.icon} />
-        <Text style={styles.screenTitle}>Create Task</Text>
-
-        <Text style={styles.fieldLabel}>Title *</Text>
-        <TextInput
-          placeholder="Task title"
-          value={title}
-          onChangeText={setTitle}
-          style={styles.input}
-          returnKeyType="next"
-        />
-
-        <Text style={styles.fieldLabel}>Description</Text>
-        <TextInput
-          placeholder="Optional description"
-          value={description}
-          onChangeText={setDescription}
-          style={[styles.input, styles.inputMultiline]}
-          multiline
-          textAlignVertical="top"
-        />
-
-        <Text style={styles.fieldLabel}>Category</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            key={categories.length}
-            selectedValue={category}
-            onValueChange={(itemValue) => setCategory(itemValue)}
-            style={styles.picker}
-            dropdownIconColor="#451E5D">
-            <Picker.Item label="Select Category" value="" />
-            {categories.map((cat) => (
-              <Picker.Item key={cat.id} label={cat.name} value={String(cat.id)} />
-            ))}
-          </Picker>
+        <View style={styles.header}>
+          <Text style={styles.screenTitle}>Create Task</Text>
+          <Text style={styles.screenSubtitle}>Fill in the details below</Text>
         </View>
 
-        <Text style={styles.fieldLabel}>Priority</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={priority}
-            onValueChange={(itemValue) => setPriority(itemValue)}
-            style={styles.picker}
-            dropdownIconColor="#451E5D">
-            <Picker.Item label="High"   value="high"   />
-            <Picker.Item label="Medium" value="medium" />
-            <Picker.Item label="Low"    value="low"    />
-          </Picker>
-        </View>
+        <View style={styles.fields}>
 
-        <Text style={styles.fieldLabel}>Due Date</Text>
-        {Platform.OS === 'web' ? (
-          <View style={{ marginBottom: 24 }}>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>
+              Title <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
-              value={webDateText}
-              onChangeText={handleWebDateChange}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#999"
-              style={[styles.input, { marginBottom: 0 }, webDateError ? styles.inputError : null]}
-              maxLength={10}
+              placeholder="Task title"
+              placeholderTextColor="#B0AABF"
+              value={title}
+              onChangeText={setTitle}
+              style={styles.input}
+              returnKeyType="next"
             />
-            {webDateError ? (
-              <Text style={styles.webDateErrorText}>{webDateError}</Text>
-            ) : null}
           </View>
-        ) : (
-          <>
-            <TouchableOpacity
-              onPress={() => setShowDatePicker(true)}
-              style={styles.datePickerButton}
-              activeOpacity={0.7}>
-              <Icon name="calendar-today" size={17} color="#451E5D" />
-              <Text style={styles.datePickerText}>{formatLocalDate(dueDate)}</Text>
-              <Icon name="chevron-right" size={18} color="#B0AABF" />
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={dueDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'default' : 'spinner'}
-                textColor="#333"
-                onChange={handleDateChange}
-              />
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              placeholder="Optional description"
+              placeholderTextColor="#B0AABF"
+              value={description}
+              onChangeText={setDescription}
+              style={[styles.input, styles.inputMultiline]}
+              multiline
+              textAlignVertical="top"
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Category</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                key={categories.length}
+                selectedValue={category}
+                onValueChange={(itemValue) => setCategory(itemValue)}
+                style={styles.picker}
+                dropdownIconColor="#451E5D">
+                <Picker.Item label="Select Category" value="" />
+                {categories.map((cat) => (
+                  <Picker.Item key={cat.id} label={cat.name} value={String(cat.id)} />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Priority</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={priority}
+                onValueChange={(itemValue) => setPriority(itemValue)}
+                style={styles.picker}
+                dropdownIconColor="#451E5D">
+                <Picker.Item label="High"   value="high"   />
+                <Picker.Item label="Medium" value="medium" />
+                <Picker.Item label="Low"    value="low"    />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Due Date</Text>
+            {Platform.OS === 'web' ? (
+              <View>
+                <TextInput
+                  value={webDateText}
+                  onChangeText={handleWebDateChange}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#B0AABF"
+                  style={[styles.input, webDateError ? styles.inputError : null]}
+                  maxLength={10}
+                />
+                {webDateError ? (
+                  <Text style={styles.webDateErrorText}>{webDateError}</Text>
+                ) : null}
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  style={styles.datePickerButton}
+                  activeOpacity={0.7}>
+                  <Icon name="calendar-today" size={17} color="#451E5D" />
+                  <Text style={styles.datePickerText}>{formatLocalDate(dueDate)}</Text>
+                  <Icon name="chevron-right" size={18} color="#B0AABF" />
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={dueDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'default' : 'spinner'}
+                    textColor="#333"
+                    onChange={handleDateChange}
+                  />
+                )}
+              </>
             )}
-          </>
-        )}
+          </View>
+
+        </View>
 
         <TouchableOpacity
           onPress={handleCreateTask}
-          style={[styles.createButton, isLoading && styles.createButtonDisabled]}
-          disabled={isLoading}>
-          <Text style={styles.createButtonText}>
-            {isLoading ? 'Creating...' : 'CREATE TASK'}
+          style={[styles.primaryBtn, isLoading && styles.btnDisabled]}
+          disabled={isLoading}
+          activeOpacity={0.88}>
+          <Text style={styles.primaryBtnText}>
+            {isLoading ? 'Creating...' : 'Create Task'}
           </Text>
         </TouchableOpacity>
 
@@ -206,71 +228,77 @@ export default function CreateTaskScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: 28,
+    paddingTop: 32,
     paddingBottom: 40,
   },
-  icon: {
-    alignSelf: 'center',
-    marginBottom: 4,
+  header: {
+    marginBottom: 32,
   },
   screenTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#451E5D',
-    marginBottom: 24,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1A0A2E',
+    letterSpacing: -0.5,
+    marginBottom: 4,
   },
-  fieldLabel: {
-    fontSize: 11,
+  screenSubtitle: {
+    fontSize: 14,
+    color: '#7C7A8E',
+  },
+  fields: {
+    gap: 20,
+    marginBottom: 32,
+  },
+  fieldGroup: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#999',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 6,
+    color: '#3D2055',
+    letterSpacing: 0.2,
+  },
+  required: {
+    color: '#E05555',
   },
   input: {
-    width: '100%',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    fontSize: 16,
+    backgroundColor: '#F8F6FB',
+    borderWidth: 1.5,
+    borderColor: '#E8E2F0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#1A0A2E',
   },
   inputMultiline: {
-    minHeight: 80,
+    minHeight: 90,
   },
   pickerContainer: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    marginBottom: 20,
+    backgroundColor: '#F8F6FB',
+    borderWidth: 1.5,
+    borderColor: '#E8E2F0',
+    borderRadius: 12,
     overflow: 'hidden',
   },
   picker: {
     width: '100%',
-    color: '#333',
+    color: '#1A0A2E',
   },
   datePickerButton: {
-    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 13,
-    marginBottom: 24,
     backgroundColor: '#F8F6FB',
+    borderWidth: 1.5,
     borderColor: '#E8E2F0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   datePickerText: {
     flex: 1,
@@ -278,25 +306,32 @@ const styles = StyleSheet.create({
     color: '#1A0A2E',
   },
   inputError: {
-    borderColor: '#c00',
+    borderColor: '#E05555',
   },
   webDateErrorText: {
     fontSize: 12,
-    color: '#c00',
+    color: '#E05555',
     marginTop: 4,
   },
-  createButton: {
+  primaryBtn: {
     backgroundColor: '#451E5D',
-    borderRadius: 10,
-    paddingVertical: 15,
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#451E5D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  createButtonDisabled: {
+  btnDisabled: {
     opacity: 0.6,
   },
-  createButtonText: {
+  primaryBtnText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
