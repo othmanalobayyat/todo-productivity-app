@@ -50,7 +50,7 @@ router.post(
           description: req.body.description,
           due_date: req.body.due_date,
           priority: req.body.priority || "medium",
-          category_id: req.body.category_id,
+          category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
         },
       });
       res.json(formatTask(task));
@@ -89,7 +89,7 @@ router.put("/tasks/:id", authMiddleware, async function (req, res) {
         description: req.body.description,
         due_date: req.body.due_date,
         priority: req.body.priority || "medium",
-        category_id: req.body.category_id,
+        category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
       },
     });
     res.json(formatTask(updated));
