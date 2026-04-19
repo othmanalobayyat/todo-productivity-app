@@ -1,113 +1,137 @@
 import React from "react";
-import { StyleSheet, Text, View, Image, TouchableOpacity, StatusBar } from "react-native";
+import { StyleSheet, Text, View, Image, TouchableOpacity, Pressable, StatusBar } from "react-native";
 
 export default function WelcomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
-    <StatusBar backgroundColor="#FFF" />
-      {/* Logo */}
-      <View style={styles.logoContainer}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
+      <View style={styles.logoWrapper}>
         <Image
           source={require("../../assets/logo.png")}
-          style={styles.image}
+          style={styles.logoImage}
           resizeMode="contain"
         />
       </View>
 
-      {/* Illustration */}
       <View style={styles.imageContainer}>
         <Image
           source={require("../../assets/background.jpg")}
-          style={styles.image}
+          style={styles.heroImage}
           resizeMode="contain"
         />
       </View>
-      <Text style={styles.title}>Hello !</Text>
-      <Text style={styles.subtitle}>
-        Transform your plans into accomplishments and your dreams into reality, one task at a time.
-      </Text>
+
+      <View style={styles.copyContainer}>
+        <Text style={styles.title}>Get things done.</Text>
+        <Text style={styles.subtitle}>
+          Plan, organize, and accomplish — everything in one place.
+        </Text>
+      </View>
+
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')} >
-          <Text style={styles.buttonText}>LOGIN</Text>
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={() => navigation.navigate('Login')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.loginButtonText}>Log In</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.signupButton} onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.signupText}>SIGNUP</Text>
-        </TouchableOpacity>
+        <Pressable
+          style={({ pressed }) => [styles.signupButton, pressed && styles.signupButtonPressed]}
+          onPress={() => navigation.navigate('Register')}
+        >
+          <Text style={styles.signupButtonText}>Sign Up</Text>
+        </Pressable>
       </View>
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
     alignItems: "center",
-    justifyContent: "center",
-    padding: 50,
+    paddingHorizontal: 28,
+    paddingTop: 56,
+    paddingBottom: 28,
   },
-  logoContainer: {
-  flex: 2,
-  flexDirection: 'row',
-  alignSelf: 'flex-start',
-  marginTop:20,
-  height: 200, // Set an explicit height
-  width: 100, // Set an explicit width
-},
+  logoWrapper: {
+    backgroundColor: "#f4eff8",
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginBottom: 20,
+  },
+  logoImage: {
+    width: 140,
+    height: 36,
+  },
   imageContainer: {
-    width: "80%",
-    flex: 4, // Allow the container to expand with the screen size
-    marginBottom: 5,
+    width: "90%",
+    flex: 1,
+    marginBottom: 8,
   },
-  image: {
+  heroImage: {
     width: "100%",
     height: "100%",
-    
+  },
+  copyContainer: {
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 28,
+    paddingHorizontal: 8,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    marginTop: 5,
-    color: '#451E5D',
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#451E5D",
+    marginBottom: 8,
+    textAlign: "center",
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 14,
-    color: '#9491c7',
+    color: "#9491c7",
     textAlign: "center",
-    marginBottom: 20,
+    lineHeight: 21,
   },
   buttonContainer: {
     width: "100%",
     alignItems: "center",
-    paddingBottom: 20, // Add padding to bottom for better spacing
+    paddingBottom: 16,
   },
   loginButton: {
     backgroundColor: "#451E5D",
-    width: "80%",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  signupButton: {
-    borderWidth: 1,
-    borderColor: "#451E5D",
-    width: "80%",
-    padding: 15,
-    borderRadius: 8,
+    width: "100%",
+    paddingVertical: 15,
+    borderRadius: 12,
     alignItems: "center",
     marginBottom: 10,
   },
-  buttonText: {
+  loginButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
-  signupText: {
+  signupButton: {
+    borderWidth: 1.5,
+    borderColor: "#451E5D",
+    width: "100%",
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  signupButtonPressed: {
+    backgroundColor: "#f0eaf5",
+  },
+  signupButtonText: {
     color: "#451E5D",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 });
