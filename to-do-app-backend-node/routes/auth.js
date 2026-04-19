@@ -8,17 +8,21 @@ var rateLimit = require("express-rate-limit");
 
 var { body, validationResult } = require("express-validator");
 
-var authLimiter = rateLimit({
+var limiterOptions = {
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { message: "Too many attempts. Please try again in 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
-});
+  validate: { trustProxy: false },
+};
+
+var loginLimiter = rateLimit(limiterOptions);
+var registerLimiter = rateLimit(limiterOptions);
 
 router.post(
   "/register",
-  authLimiter,
+  registerLimiter,
   [
     body("name").notEmpty(),
     body("email").isEmail(),
@@ -57,7 +61,7 @@ router.post(
 
 router.post(
   "/login",
-  authLimiter,
+  loginLimiter,
   [body("email").isEmail(), body("password").notEmpty()],
   async function (req, res) {
     const errors = validationResult(req);
