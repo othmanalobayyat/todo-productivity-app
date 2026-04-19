@@ -171,8 +171,11 @@ export default function CreateTaskScreen({ navigation }) {
           <>
             <TouchableOpacity
               onPress={() => setShowDatePicker(true)}
-              style={styles.datePickerButton}>
+              style={styles.datePickerButton}
+              activeOpacity={0.7}>
+              <Icon name="calendar-today" size={17} color="#451E5D" />
               <Text style={styles.datePickerText}>{formatLocalDate(dueDate)}</Text>
+              <Icon name="chevron-right" size={18} color="#B0AABF" />
             </TouchableOpacity>
             {showDatePicker && (
               <DateTimePicker
@@ -258,17 +261,21 @@ const styles = StyleSheet.create({
   },
   datePickerButton: {
     width: '100%',
-    borderWidth: 1,
-    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: 12,
     paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingVertical: 13,
     marginBottom: 24,
-    backgroundColor: '#fff',
-    borderColor: '#ccc',
+    backgroundColor: '#F8F6FB',
+    borderColor: '#E8E2F0',
   },
   datePickerText: {
-    fontSize: 16,
-    color: '#333',
+    flex: 1,
+    fontSize: 15,
+    color: '#1A0A2E',
   },
   inputError: {
     borderColor: '#c00',
