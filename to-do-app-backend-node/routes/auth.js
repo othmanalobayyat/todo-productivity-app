@@ -39,6 +39,8 @@ router.post(
           .status(409)
           .json({ message: "The email address is already in use." });
       }
+      console.error("POST /register error:", error);
+      res.status(500).json({ message: "An error occurred. Please try again." });
     }
   },
 );
@@ -67,7 +69,10 @@ router.post(
         expiresIn: "7d",
       });
       res.json({ token });
-    } catch (error) {}
+    } catch (error) {
+      console.error("POST /login error:", error);
+      res.status(500).json({ message: "An error occurred. Please try again." });
+    }
   },
 );
 
