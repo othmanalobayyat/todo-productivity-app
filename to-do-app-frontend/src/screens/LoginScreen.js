@@ -40,8 +40,9 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
       } else {
         showToast('Login failed. Please try again.');
       }
-    } catch {
-      showToast('Incorrect email or password. Please try again.');
+    } catch (error) {
+      const msg = error.response?.data?.message;
+      showToast(msg || 'Incorrect email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
