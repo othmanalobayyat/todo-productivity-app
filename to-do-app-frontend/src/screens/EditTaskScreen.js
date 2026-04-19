@@ -17,6 +17,12 @@ import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { formatLocalDate } from '../utils/dateUtils';
 
+const isValidDate = (str) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+  const d = new Date(str + 'T00:00:00');
+  return !isNaN(d.getTime());
+};
+
 export default function EditTaskScreen({ route, navigation }) {
   const { taskId } = route.params;
   const [task, setTask] = useState({
@@ -30,6 +36,8 @@ export default function EditTaskScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [webDateText, setWebDateText] = useState(formatLocalDate(new Date()));
+  const [webDateError, setWebDateError] = useState('');
 
   useEffect(() => {
     fetchTask();
@@ -44,14 +52,16 @@ export default function EditTaskScreen({ route, navigation }) {
       const [year, month, day] = rawDate
         ? rawDate.split('-').map(Number)
         : [null, null, null];
+      const resolvedDate = rawDate ? new Date(year, month - 1, day) : new Date();
       setTask({
         title: response.data.title,
         description: response.data.description,
-        dueDate: rawDate ? new Date(year, month - 1, day) : new Date(),
+        dueDate: resolvedDate,
         category: response.data.category_id ?? '',
         completed: response.data.completed,
         priority: response.data.priority ?? 'medium',
       });
+      setWebDateText(formatLocalDate(resolvedDate));
     } catch (error) {
       console.error('Error fetching task:', error);
       showToast('Failed to fetch task details.');
@@ -103,11 +113,22 @@ export default function EditTaskScreen({ route, navigation }) {
     }
   };
 
+  const handleWebDateChange = (text) => {
+    setWebDateText(text);
+    if (isValidDate(text)) {
+      const [y, m, d] = text.split('-').map(Number);
+      setTask((prev) => ({ ...prev, dueDate: new Date(y, m - 1, d) }));
+      setWebDateError('');
+    } else {
+      setWebDateError('Use format YYYY-MM-DD');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <StatusBar backgroundColor="#451E5D" />
+      <StatusBar backgroundColor="#451E5D" barStyle="light-content" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled">
@@ -162,20 +183,37 @@ export default function EditTaskScreen({ route, navigation }) {
         </View>
 
         <Text style={styles.fieldLabel}>Due Date</Text>
-        <TouchableOpacity
-          onPress={() => setShowDatePicker(true)}
-          style={styles.datePickerButton}>
-          <Text style={styles.datePickerText}>{formatLocalDate(task.dueDate)}</Text>
-        </TouchableOpacity>
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={task.dueDate}
-            mode="date"
-            display="spinner"
-            textColor="#333"
-            onChange={handleDateChange}
-          />
+        {Platform.OS === 'web' ? (
+          <View style={{ marginBottom: 24 }}>
+            <TextInput
+              value={webDateText}
+              onChangeText={handleWebDateChange}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#999"
+              style={[styles.input, { marginBottom: 0 }, webDateError ? styles.inputError : null]}
+              maxLength={10}
+            />
+            {webDateError ? (
+              <Text style={styles.webDateErrorText}>{webDateError}</Text>
+            ) : null}
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              style={styles.datePickerButton}>
+              <Text style={styles.datePickerText}>{formatLocalDate(task.dueDate)}</Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={task.dueDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'default' : 'spinner'}
+                textColor="#333"
+                onChange={handleDateChange}
+              />
+            )}
+          </>
         )}
 
         <TouchableOpacity
@@ -261,6 +299,14 @@ const styles = StyleSheet.create({
   datePickerText: {
     fontSize: 16,
     color: '#333',
+  },
+  inputError: {
+    borderColor: '#c00',
+  },
+  webDateErrorText: {
+    fontSize: 12,
+    color: '#c00',
+    marginTop: 4,
   },
   saveButton: {
     backgroundColor: '#451E5D',
