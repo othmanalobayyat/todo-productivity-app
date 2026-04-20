@@ -82,6 +82,7 @@ export default function App() {
           setIsLoggedIn(true);
         } catch (error) {
           console.error("Failed to fetch user data.", error);
+          await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
           setIsLoggedIn(false);
         }
       } else {

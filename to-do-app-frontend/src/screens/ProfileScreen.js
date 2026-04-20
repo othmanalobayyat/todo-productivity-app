@@ -123,7 +123,7 @@ export default function ProfileScreen({ navigation, userData, onLogoutSuccess })
             </View>
             <View style={styles.modalInfoRow}>
               <Text style={styles.modalInfoLabel}>Built With</Text>
-              <Text style={styles.modalInfoValue}>React Native · Laravel</Text>
+              <Text style={styles.modalInfoValue}>React Native · Node.js</Text>
             </View>
             {/* ───────────────────────────────────────────────── */}
 

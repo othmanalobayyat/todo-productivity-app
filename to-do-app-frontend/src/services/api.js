@@ -5,7 +5,7 @@ import { AUTH_TOKEN_KEY } from "../constants/storage";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 5000,
+  timeout: 15000,
 });
 
 api.interceptors.request.use(async (config) => {

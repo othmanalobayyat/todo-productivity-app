@@ -39,6 +39,9 @@ router.put(
       });
       res.json({ name: updated.name, email: updated.email });
     } catch (error) {
+      if (error.code === "P2002") {
+        return res.status(409).json({ message: "That email address is already in use." });
+      }
       res.status(500).json({ message: "Error updating profile" });
     }
   },

@@ -74,7 +74,11 @@ router.get("/tasks/:id", authMiddleware, async function (req, res) {
   }
 });
 
-router.put("/tasks/:id", authMiddleware, async function (req, res) {
+router.put("/tasks/:id", authMiddleware, [body("title").notEmpty().withMessage("Task title is required")], async function (req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   try {
     var task = await Prisma.tasks.findFirst({
       where: { id: parseInt(req.params.id), user_id: req.user.userId },

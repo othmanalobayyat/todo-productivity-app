@@ -3,6 +3,9 @@ var express = require("express");
 var cors = require("cors");
 var app = express();
 
+// Trust Render/reverse-proxy headers so express-rate-limit sees the real client IP.
+app.set("trust proxy", 1);
+
 // middleware
 var allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map(function (o) { return o.trim(); })
