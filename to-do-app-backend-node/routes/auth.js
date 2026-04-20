@@ -10,11 +10,10 @@ var { body, validationResult } = require("express-validator");
 
 var limiterOptions = {
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 15,
   message: { message: "Too many attempts. Please try again in 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false },
 };
 
 var loginLimiter = rateLimit(limiterOptions);

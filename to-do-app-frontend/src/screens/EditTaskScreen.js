@@ -55,7 +55,7 @@ export default function EditTaskScreen({ route, navigation }) {
       const resolvedDate = rawDate ? new Date(year, month - 1, day) : new Date();
       setTask({
         title: response.data.title,
-        description: response.data.description,
+        description: response.data.description ?? '',
         dueDate: resolvedDate,
         category: response.data.category_id ?? '',
         completed: response.data.completed,
