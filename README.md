@@ -6,6 +6,18 @@ A full-stack mobile productivity app that helps users build consistent habits th
 
 ---
 
+## License & Usage
+
+Copyright (c) 2026 Othman Alobayyat. All Rights Reserved.
+
+This repository is publicly visible for portfolio and code review purposes only. The source code, assets, and all other contents remain the exclusive property of the author.
+
+Reuse, redistribution, modification, or commercial use of any part of this project — in whole or in part — is not permitted without prior written permission.
+
+See the [LICENSE](./LICENSE) file for full terms.
+
+---
+
 ## ✨ Highlights
 
 - **Daily streak system** — stay consistent with a streak that tracks days you completed tasks
