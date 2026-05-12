@@ -62,17 +62,16 @@ Both backends implement the same API contract (same endpoints and response struc
 
 ## Tech Stack
 
-Built with a production-style architecture supporting dual backends and a shared API contract.
-
-| Layer             | Technology                                  |
-| ----------------- | ------------------------------------------- |
-| Frontend          | React Native, Expo ~54, React Navigation v7 |
-| UI components     | React Native Paper, Vector Icons, Calendars |
-| HTTP client       | Axios                                       |
-| Local storage     | AsyncStorage                                |
-| Backend (primary) | Laravel 11, PHP 8.2+, Laravel Sanctum       |
-| Backend (alt)     | Node.js, Express 5, Prisma ORM, JWT         |
-| Database          | SQLite (dev) / MySQL (production)           |
+| Layer             | Technology                                        |
+| ----------------- | ------------------------------------------------- |
+| Frontend          | React Native, Expo ~54, React Navigation v7       |
+| UI components     | React Native Paper, Vector Icons, Calendars       |
+| HTTP client       | Axios                                             |
+| Local storage     | AsyncStorage                                      |
+| Backend (primary) | Node.js, Express 5, Prisma ORM, JWT               |
+| Backend (alt)     | Laravel 11, PHP 8.2+, Laravel Sanctum             |
+| Database          | PostgreSQL (Supabase)                             |
+| Hosting           | Render (backend), Expo EAS (Android APK)          |
 
 ---
 
@@ -93,13 +92,13 @@ Built with a production-style architecture supporting dual backends and a shared
 ```
 React Native (Expo)
        │
-       │  Axios (token in header)
+       │  Axios (Bearer token in header)
        ▼
-REST API  ──────┬──── Laravel (Sanctum auth)
-                └──── Node.js / Express (JWT auth)
+REST API  ──────┬──── Node.js / Express (JWT)   ← live on Render
+                └──── Laravel (Sanctum)          ← alternative backend
                             │
                             ▼
-                     SQLite / MySQL
+                  PostgreSQL (Supabase)
 ```
 
 The frontend connects to whichever backend is running — switch by updating `EXPO_PUBLIC_API_BASE_URL` in `.env`. Both backends expose the same API surface.
@@ -130,35 +129,19 @@ All date comparisons use the device's local clock, not UTC, so the streak never 
 
 ### Prerequisites
 
-- PHP 8.2+ and Composer
 - Node.js 18+
-- Expo Go app on your device (or Android/iOS emulator)
+- Expo Go app on your device (or Android emulator)
+- A PostgreSQL database (e.g. Supabase free tier)
+- PHP 8.2+ and Composer (only if running the Laravel backend)
 
 ---
 
-### Laravel Backend
-
-```bash
-cd to-do-app-backend
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-# Run the completed_at migration if not included above:
-# php artisan migrate --path=database/migrations/2026_04_19_000000_add_completed_at_to_tasks_table.php
-php artisan serve
-```
-
-API available at `http://127.0.0.1:8000`.
-
----
-
-### Node.js Backend
+### Node.js Backend (Primary)
 
 ```bash
 cd to-do-app-backend-node
 npm install
-cp .env.example .env   # set JWT_SECRET and DATABASE_URL
+cp .env.example .env   # fill in JWT_SECRET, DATABASE_URL, DIRECT_URL
 npx prisma generate
 npx prisma db push
 npm start
@@ -168,24 +151,49 @@ API available at `http://localhost:3000`.
 
 ---
 
+### Laravel Backend (Alternative)
+
+```bash
+cd to-do-app-backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+API available at `http://127.0.0.1:8000`.
+
+---
+
 ### Frontend
 
 ```bash
 cd to-do-app-frontend
 npm install
 cp .env.example .env
-# Set EXPO_PUBLIC_API_BASE_URL to your backend's local IP, e.g.:
-# EXPO_PUBLIC_API_BASE_URL=http://192.168.1.x:8000/api
+# Set EXPO_PUBLIC_API_BASE_URL to your backend URL, e.g.:
+# EXPO_PUBLIC_API_BASE_URL=http://192.168.1.x:3000/api
 npx expo start
 ```
 
-Scan the QR code with Expo Go, or press `a` / `i` for an emulator.
+Scan the QR code with Expo Go, or press `a` for an Android emulator.
 
 > Use your machine's local IP (not `localhost`) when testing on a physical device.
 
 ---
 
 ## Environment Variables
+
+**Node.js** — `to-do-app-backend-node/.env`
+
+| Variable       | Description                                          |
+| -------------- | ---------------------------------------------------- |
+| `DATABASE_URL` | Supabase connection pooler URL (for Prisma queries)  |
+| `DIRECT_URL`   | Supabase direct URL (for `prisma db push`)           |
+| `JWT_SECRET`   | Secret used to sign JWT tokens                       |
+| `PORT`         | Server port (default `3000`)                         |
+| `CORS_ORIGIN`  | Allowed origin(s), comma-separated (optional)        |
 
 **Laravel** — `to-do-app-backend/.env`
 
@@ -194,14 +202,6 @@ Scan the QR code with Expo Go, or press `a` / `i` for an emulator.
 | `APP_KEY`       | Run `php artisan key:generate`    |
 | `DB_CONNECTION` | `sqlite` or `mysql`               |
 | `DB_DATABASE`   | Database name or SQLite file path |
-
-**Node.js** — `to-do-app-backend-node/.env`
-
-| Variable       | Description                         |
-| -------------- | ----------------------------------- |
-| `DATABASE_URL` | Prisma DB URL, e.g. `file:./dev.db` |
-| `JWT_SECRET`   | Secret for signing JWT tokens       |
-| `PORT`         | Server port (default `3000`)        |
 
 **Frontend** — `to-do-app-frontend/.env`
 
@@ -216,3 +216,4 @@ Scan the QR code with Expo Go, or press `a` / `i` for an emulator.
 - Minimal UI philosophy — no clutter, just what you need to get things done.
 - Date handling uses local device time throughout to avoid timezone-related bugs.
 - Both backends are fully interchangeable — same frontend, same API contract.
+- The live backend runs on Render's free tier. The first request after inactivity may take 20–30 seconds to cold-start.

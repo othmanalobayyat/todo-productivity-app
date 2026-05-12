@@ -11,7 +11,7 @@ router.get("/tasks", authMiddleware, async function (req, res) {
       where: { user_id: req.user.userId },
       include: { _count: { select: { subtasks: true } } },
     });
-    var restlt = await Promise.all(
+    var result = await Promise.all(
       tasks.map(async function (task) {
         var completedCount = await Prisma.subtasks.count({
           where: { task_id: task.id, completed: true },
@@ -25,7 +25,7 @@ router.get("/tasks", authMiddleware, async function (req, res) {
       }),
     );
 
-    res.json(restlt.map(formatTask));
+    res.json(result);
   } catch (error) {
     console.error("GET /tasks error:", error);
     res.status(500).json({ message: "Error fetching tasks" });
@@ -53,7 +53,7 @@ router.post(
           category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
         },
       });
-      res.json(formatTask(task));
+      res.json(task);
     } catch (error) {
       res.status(500).json({ message: "Error creating task" });
     }
@@ -68,7 +68,7 @@ router.get("/tasks/:id", authMiddleware, async function (req, res) {
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
-    res.json(formatTask(task));
+    res.json(task);
   } catch (error) {
     res.status(500).json({ message: "Error fetching task" });
   }
@@ -96,7 +96,7 @@ router.put("/tasks/:id", authMiddleware, [body("title").notEmpty().withMessage("
         category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
       },
     });
-    res.json(formatTask(updated));
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ message: "Error updating task" });
   }
@@ -135,24 +135,10 @@ router.patch("/tasks/:id/complete", authMiddleware, async function (req, res) {
         completed_at: nowCompleting ? new Date() : null,
       },
     });
-    res.json(formatTask(updated));
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ message: "Error updating task" });
   }
 });
 
 module.exports = router;
-
-/*function formatTask(task) {
-  if (task.due_date == null) {
-    return task;
-  }
-  const year = task.due_date.getUTCFullYear();
-  const month = (task.due_date.getUTCMonth() + 1).toString().padStart(2, "0");
-  const day = task.due_date.getUTCDate().toString().padStart(2, "0");
-  return { ...task, due_date: `${year}-${month}-${day}` };
-}*/
-
-function formatTask(task) {
-  return task;
-}
