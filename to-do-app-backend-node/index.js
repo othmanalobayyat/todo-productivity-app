@@ -30,7 +30,7 @@ app.use("/api", profile);
 const categories = require("./routes/categories.js");
 app.use("/api", categories);
 
-// test route
+// Health check
 app.get("/ping", function (req, res) {
   res.json({ message: "pong" });
 });

@@ -8,9 +8,9 @@
     "dev": "nodemon index.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Othman Alobayyat",
+  "license": "UNLICENSED",
+  "description": "Express 5 + Prisma + PostgreSQL REST API for the Todo Productivity App",
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",

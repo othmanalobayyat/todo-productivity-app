@@ -1,5 +1,5 @@
 {
-  "license": "0BSD",
+  "license": "UNLICENSED",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -20,7 +20,6 @@
     "expo-font": "~14.0.11",
     "expo-linking": "~8.0.12",
     "expo-status-bar": "~3.0.9",
-    "lodash": "^4.18.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",

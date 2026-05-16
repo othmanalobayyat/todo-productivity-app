@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,23 +11,15 @@ import { Calendar } from "react-native-calendars";
 import { useFocusEffect } from "@react-navigation/native";
 import api from "../services/api";
 import { getMarkedDates, getTasksForDate } from "../utils/calendarUtils";
+import { getTodayString } from "../utils/dateUtils";
 import AppHeader from "../components/AppHeader";
 import { PRIORITY_COLORS } from "../constants/priorities";
 
-function getDeviceLocalDate() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-const today = getDeviceLocalDate();
+const today = getTodayString();
 
 function formatDisplayDate(dateString) {
-  const date = new Date(dateString);
-
-  return date.toLocaleDateString("en-US", {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -42,9 +34,9 @@ export default function CalendarScreen({ navigation }) {
   const fetchTasks = useCallback(async () => {
     try {
       const res = await api.get("/tasks");
-      setTasks(res.data?.data ?? res.data ?? []);
-    } catch (e) {
-      console.error("CalendarScreen: failed to fetch tasks", e);
+      setTasks(res.data ?? []);
+    } catch {
+      // silent — UI shows empty state
     } finally {
       setLoading(false);
     }
@@ -103,15 +95,23 @@ export default function CalendarScreen({ navigation }) {
         markedDates={markedDates}
         markingType="dot"
         theme={{
+          backgroundColor: "#f5f2f8",
+          calendarBackground: "#f5f2f8",
+
           todayTextColor: "#451E5D",
           selectedDayBackgroundColor: "#451E5D",
           selectedDayTextColor: "#fff",
+
           arrowColor: "#451E5D",
           dotColor: "#451E5D",
+
           textDayFontSize: 14,
           textMonthFontSize: 15,
           textMonthFontWeight: "bold",
+
           monthTextColor: "#1a1a1a",
+          dayTextColor: "#2c3e50",
+          textDisabledColor: "#c8c8d0",
         }}
       />
 
@@ -142,18 +142,7 @@ export default function CalendarScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  header: {
-    backgroundColor: "#451E5D",
-    paddingTop: 50,
-    paddingBottom: 14,
-    paddingHorizontal: 20,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
+    backgroundColor: "#f5f2f8",
   },
   daySection: {
     paddingHorizontal: 16,

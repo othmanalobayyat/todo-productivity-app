@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,32 +10,46 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { showToast } from '../components/Toast';
 import api from '../services/api';
 
 export default function TaskDetailsScreen({ route }) {
-  const { task } = route.params;
+  const taskId = route.params.task.id;
 
+  const [task, setTask] = useState(route.params.task);
   const [subtasks, setSubtasks] = useState([]);
   const [loadingSubtasks, setLoadingSubtasks] = useState(true);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [adding, setAdding] = useState(false);
 
+  const fetchTask = useCallback(async () => {
+    try {
+      const response = await api.get(`/tasks/${taskId}`);
+      setTask(response.data);
+    } catch {
+      showToast('Failed to load task');
+    }
+  }, [taskId]);
+
   const fetchSubtasks = useCallback(async () => {
     try {
-      const response = await api.get(`/tasks/${task.id}/subtasks`);
+      const response = await api.get(`/tasks/${taskId}/subtasks`);
       setSubtasks(response.data);
-    } catch (error) {
+    } catch {
       showToast('Failed to load subtasks');
     } finally {
       setLoadingSubtasks(false);
     }
-  }, [task.id]);
+  }, [taskId]);
 
-  useEffect(() => {
-    fetchSubtasks();
-  }, [fetchSubtasks]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchTask();
+      fetchSubtasks();
+    }, [fetchTask, fetchSubtasks]),
+  );
 
   async function handleAddSubtask() {
     const title = newSubtaskTitle.trim();
@@ -58,6 +72,15 @@ export default function TaskDetailsScreen({ route }) {
       await fetchSubtasks();
     } catch (error) {
       showToast('Failed to update subtask');
+    }
+  }
+
+  async function handleToggleTask() {
+    try {
+      await api.patch(`/tasks/${taskId}/complete`);
+      await fetchTask();
+    } catch {
+      showToast('Failed to update task');
     }
   }
 
@@ -102,17 +125,23 @@ export default function TaskDetailsScreen({ route }) {
         <Text style={styles.cardValue}>{task.description || 'No description'}</Text>
       </View>
 
-      <View style={styles.statusContainer}>
+      <TouchableOpacity style={styles.statusContainer} onPress={handleToggleTask} activeOpacity={0.7}>
         <View
           style={[
             styles.statusDot,
-            { backgroundColor: task.completed ? 'green' : 'red' },
+            { backgroundColor: task.completed ? '#27ae60' : '#c0392b' },
           ]}
         />
         <Text style={styles.statusText}>
           {task.completed ? 'Completed' : 'Not Completed'}
         </Text>
-      </View>
+        <Icon
+          name={task.completed ? 'check-circle' : 'circle-o'}
+          size={16}
+          color={task.completed ? '#27ae60' : '#bbb'}
+          style={styles.statusIcon}
+        />
+      </TouchableOpacity>
 
       {/* Subtasks section */}
       <View style={styles.subtasksSection}>
@@ -244,6 +273,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 4,
     justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  statusIcon: {
+    marginLeft: 6,
   },
   statusDot: {
     width: 10,
