@@ -293,6 +293,8 @@ Tasks store `due_date` as `String?` in Prisma (format: `YYYY-MM-DD`). This avoid
 
 - **Render cold starts** — the Node backend is hosted on Render's free tier; the first request after inactivity can take 20–30 seconds
 - **No token refresh** — JWTs expire after 7 days with no silent refresh; users are logged out and must re-authenticate
+- **No server-side token revocation** — JWTs are stateless; logging out only removes the token from the device. A captured token remains cryptographically valid until its 7-day TTL expires. Mitigating this properly requires a server-side token denylist or short-lived tokens with a refresh mechanism.
+- **Unencrypted token storage** — tokens are stored in AsyncStorage, which is unencrypted on Android (readable via ADB on debug builds) and not covered by iOS encrypted backups by default. Production apps with stricter security requirements should use `expo-secure-store` (Keychain / Keystore).
 - **Achievements are ephemeral** — computed on every profile screen load from the current task list; resetting tasks resets badges
 - **Categories are global** — `task_categories` is a shared table (seeded with Work, Personal, Shopping, Entertainment); users cannot create their own categories yet
 - **No email verification** — accounts are active immediately after registration

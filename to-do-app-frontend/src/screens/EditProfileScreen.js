@@ -16,6 +16,7 @@ export default function EditProfileScreen({ route, navigation, onProfileUpdate }
   const [name, setName]   = useState(userData?.name  || '');
   const [email, setEmail] = useState(userData?.email || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
 
   const handleSave = async () => {
     const trimmedName  = name.trim();
@@ -59,17 +60,19 @@ export default function EditProfileScreen({ route, navigation, onProfileUpdate }
 
       <Text style={styles.fieldLabel}>Name</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, focusedField === 'name' && styles.inputFocused]}
         value={name}
         onChangeText={setName}
         placeholder="Your name"
         autoCapitalize="words"
         returnKeyType="next"
+        onFocus={() => setFocusedField('name')}
+        onBlur={() => setFocusedField(null)}
       />
 
       <Text style={styles.fieldLabel}>Email</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, focusedField === 'email' && styles.inputFocused]}
         value={email}
         onChangeText={setEmail}
         placeholder="Your email"
@@ -77,6 +80,8 @@ export default function EditProfileScreen({ route, navigation, onProfileUpdate }
         autoCapitalize="none"
         returnKeyType="done"
         onSubmitEditing={handleSave}
+        onFocus={() => setFocusedField('email')}
+        onBlur={() => setFocusedField(null)}
       />
 
       <TouchableOpacity
@@ -94,7 +99,7 @@ export default function EditProfileScreen({ route, navigation, onProfileUpdate }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f5f2f8',
     padding: 20,
   },
   fieldLabel: {
@@ -109,12 +114,15 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e0e0e0',
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
     color: '#1a1a1a',
+  },
+  inputFocused: {
+    borderColor: '#451E5D',
   },
   saveButton: {
     backgroundColor: '#451E5D',

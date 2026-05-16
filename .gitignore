@@ -87,3 +87,6 @@ Thumbs.db
 .zed/
 *.swp
 *.swo
+*.claude/
+*CLAUDE.md
+
