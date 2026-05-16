@@ -2,6 +2,7 @@
   "expo": {
     "name": "Todo Productivity App",
     "slug": "todo-productivity-app",
+    "scheme": "todoapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
