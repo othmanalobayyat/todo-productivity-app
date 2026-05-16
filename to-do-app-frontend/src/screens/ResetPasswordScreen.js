@@ -6,34 +6,29 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { resetPassword } from '../services/authService';
-import { showToast } from '../components/Toast';
-
-const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 export default function ResetPasswordScreen({ navigation, route }) {
-  const [email, setEmail]               = useState(route.params?.email || '');
-  const [token, setToken]               = useState(route.params?.token || '');
-  const fromDeepLink = !!(route.params?.token && route.params?.email);
-  const [password, setPassword]         = useState('');
-  const [confirmPassword, setConfirm]   = useState('');
-  const [showPassword, setShowPass]     = useState(false);
-  const [showConfirm, setShowConfirm]   = useState(false);
-  const [isLoading, setLoading]         = useState(false);
-  const [errors, setErrors]             = useState({});
-  const [focused, setFocused]           = useState(null);
-  const [done, setDone]                 = useState(false);
+  // Token and email come from URL query params — never shown to the user.
+  const email = route.params?.email || '';
+  const token = route.params?.token || '';
+  const isValidLink = !!(token && email);
 
-  const tokenRef   = useRef(null);
-  const passwordRef = useRef(null);
-  const confirmRef  = useRef(null);
+  const [password, setPassword]       = useState('');
+  const [confirmPassword, setConfirm] = useState('');
+  const [showPassword, setShowPass]   = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isLoading, setLoading]       = useState(false);
+  const [errors, setErrors]           = useState({});
+  const [focused, setFocused]         = useState(null);
+  const [done, setDone]               = useState(false);
+  const [apiError, setApiError]       = useState('');
+
+  const confirmRef = useRef(null);
 
   const clearError = (field) => setErrors((e) => ({ ...e, [field]: null }));
 
   const validate = () => {
     const e = {};
-    if (!email.trim()) e.email = 'Email is required.';
-    else if (!isValidEmail(email.trim())) e.email = 'Enter a valid email address.';
-    if (!token.trim()) e.token = 'Reset token is required.';
     if (!password) e.password = 'New password is required.';
     else if (password.length < 8) e.password = 'Password must be at least 8 characters.';
     if (!confirmPassword) e.confirmPassword = 'Please confirm your new password.';
@@ -44,33 +39,52 @@ export default function ResetPasswordScreen({ navigation, route }) {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    setApiError('');
     setLoading(true);
     try {
-      await resetPassword(email.trim(), token.trim(), password, confirmPassword);
+      await resetPassword(email, token, password, confirmPassword);
       setDone(true);
     } catch (e) {
       const msg = e.response?.data?.message ?? e.response?.data?.errors?.[0]?.msg;
-      showToast(msg || 'Something went wrong. Please try again.');
+      setApiError(msg || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const inputStyle = (field) => [
-    styles.input,
-    focused === field && styles.inputFocused,
-    !!errors[field] && styles.inputError,
-  ];
   const rowStyle = (field) => [
     styles.inputRow,
     focused === field && styles.inputFocused,
     !!errors[field] && styles.inputError,
   ];
 
-  // ── Success state ──────────────────────────────────────────────────────────
+  // ── Invalid / missing link params ──────────────────────────────────────────
+  if (!isValidLink) {
+    return (
+      <View style={styles.centeredContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={styles.invalidIconCircle}>
+          <Ionicons name="warning-outline" size={36} color="#E05555" />
+        </View>
+        <Text style={styles.invalidTitle}>Invalid Reset Link</Text>
+        <Text style={styles.invalidBody}>
+          This link is missing required information. Please use the link sent to your email, or request a new one.
+        </Text>
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={() => navigation.navigate('ForgotPassword')}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.primaryBtnText}>Request New Link</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ── Success state ───────────────────────────────────────────────────────────
   if (done) {
     return (
-      <View style={styles.doneContainer}>
+      <View style={styles.centeredContainer}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <View style={styles.doneIconCircle}>
           <Ionicons name="checkmark-circle" size={64} color="#27ae60" />
@@ -91,7 +105,7 @@ export default function ResetPasswordScreen({ navigation, route }) {
     );
   }
 
-  // ── Form ───────────────────────────────────────────────────────────────────
+  // ── Form ────────────────────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -100,85 +114,41 @@ export default function ResetPasswordScreen({ navigation, route }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Ionicons name="arrow-back" size={20} color="#1A0A2E" />
-        </TouchableOpacity>
-
         <View style={styles.header}>
           <View style={styles.iconCircle}>
-            <Ionicons name="key-outline" size={26} color="#451E5D" />
+            <Ionicons name="lock-closed-outline" size={26} color="#451E5D" />
           </View>
-          <Text style={styles.title}>Reset Password</Text>
-          <Text style={styles.subtitle}>
-            Open the reset link in your email, copy the token, and choose a new password.
-          </Text>
-          {fromDeepLink && (
-            <View style={styles.deepLinkBadge}>
-              <Ionicons name="checkmark-circle" size={13} color="#27ae60" />
-              <Text style={styles.deepLinkBadgeText}>Reset link verified from email</Text>
-            </View>
-          )}
+          <Text style={styles.title}>Choose a New Password</Text>
+          <Text style={styles.subtitle}>Create a strong password for your account.</Text>
+
+          {/* Read-only account pill — shows which account is being reset */}
+          <View style={styles.emailChip}>
+            <Ionicons name="person-circle-outline" size={15} color="#451E5D" />
+            <Text style={styles.emailChipText} numberOfLines={1}>{email}</Text>
+          </View>
         </View>
 
+        {/* Inline API error — shown for expired/invalid token responses */}
+        {!!apiError && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={16} color="#c0392b" />
+            <Text style={styles.errorBannerText}>{apiError}</Text>
+          </View>
+        )}
+
         <View style={styles.fields}>
-          {/* Email */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              placeholder="you@example.com"
-              placeholderTextColor="#B0AABF"
-              style={inputStyle('email')}
-              value={email}
-              onChangeText={(v) => { setEmail(v); clearError('email'); }}
-              onFocus={() => setFocused('email')}
-              onBlur={() => setFocused(null)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="next"
-              onSubmitEditing={() => tokenRef.current?.focus()}
-            />
-            {!!errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-          </View>
-
-          {/* Token */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Reset Token</Text>
-            <TextInput
-              ref={tokenRef}
-              placeholder="Paste token from your email"
-              placeholderTextColor="#B0AABF"
-              style={inputStyle('token')}
-              value={token}
-              onChangeText={(v) => { setToken(v); clearError('token'); }}
-              onFocus={() => setFocused('token')}
-              onBlur={() => setFocused(null)}
-              autoCapitalize="none"
-              autoCorrect={false}
-              spellCheck={false}
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-            />
-            {!!errors.token && <Text style={styles.errorText}>{errors.token}</Text>}
-          </View>
-
           {/* New password */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>New Password</Text>
             <View style={rowStyle('password')}>
               <TextInput
-                ref={passwordRef}
+                autoFocus
                 placeholder="At least 8 characters"
                 placeholderTextColor="#B0AABF"
                 secureTextEntry={!showPassword}
                 style={styles.inputInner}
                 value={password}
-                onChangeText={(v) => { setPassword(v); clearError('password'); }}
+                onChangeText={(v) => { setPassword(v); clearError('password'); setApiError(''); }}
                 onFocus={() => setFocused('password')}
                 onBlur={() => setFocused(null)}
                 textContentType="newPassword"
@@ -207,7 +177,7 @@ export default function ResetPasswordScreen({ navigation, route }) {
                 secureTextEntry={!showConfirm}
                 style={styles.inputInner}
                 value={confirmPassword}
-                onChangeText={(v) => { setConfirm(v); clearError('confirmPassword'); }}
+                onChangeText={(v) => { setConfirm(v); clearError('confirmPassword'); setApiError(''); }}
                 onFocus={() => setFocused('confirmPassword')}
                 onBlur={() => setFocused(null)}
                 textContentType="newPassword"
@@ -236,20 +206,59 @@ export default function ResetPasswordScreen({ navigation, route }) {
             ? <ActivityIndicator color="#fff" size="small" />
             : <Text style={styles.primaryBtnText}>Reset Password</Text>}
         </TouchableOpacity>
+
+        {/* Request new link shortcut — visible only after an expired/invalid token error */}
+        {!!apiError && (
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => navigation.navigate('ForgotPassword')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.linkText}>Request a new reset link</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  // ── Done / success screen ──
-  doneContainer: {
+  // ── Shared centered layout (invalid + done screens) ──
+  centeredContainer: {
     flex: 1,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 36,
   },
+
+  // ── Invalid link state ──
+  invalidIconCircle: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#FFF0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  invalidTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1A0A2E',
+    letterSpacing: -0.4,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  invalidBody: {
+    fontSize: 15,
+    color: '#7C7A8E',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 36,
+  },
+
+  // ── Success state ──
   doneIconCircle: {
     width: 100,
     height: 100,
@@ -283,15 +292,6 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 40,
   },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F4F2F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-  },
   header: { marginBottom: 28 },
   iconCircle: {
     width: 56,
@@ -309,22 +309,49 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginBottom: 8,
   },
-  subtitle: { fontSize: 15, color: '#7C7A8E', lineHeight: 22 },
-  deepLinkBadge: {
+  subtitle: {
+    fontSize: 15,
+    color: '#7C7A8E',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+
+  // Account email pill
+  emailChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 12,
+    gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: '#F0FBF4',
+    backgroundColor: '#F0EBF8',
     borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  deepLinkBadgeText: {
-    fontSize: 12,
+  emailChipText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#27ae60',
+    color: '#451E5D',
+    maxWidth: 260,
+  },
+
+  // API error banner
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FFF0F0',
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#c0392b',
+    lineHeight: 18,
   },
 
   fields: { gap: 20, marginBottom: 28 },
@@ -334,16 +361,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3D2055',
     letterSpacing: 0.2,
-  },
-  input: {
-    backgroundColor: '#F8F6FB',
-    borderWidth: 1.5,
-    borderColor: '#E8E2F0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#1A0A2E',
   },
   inputRow: {
     flexDirection: 'row',
@@ -380,4 +397,7 @@ const styles = StyleSheet.create({
   },
   btnDisabled:    { opacity: 0.6 },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
+
+  linkRow: { alignItems: 'center', paddingVertical: 16 },
+  linkText: { fontSize: 14, color: '#451E5D', fontWeight: '600' },
 });
