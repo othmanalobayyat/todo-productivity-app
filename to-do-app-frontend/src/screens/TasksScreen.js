@@ -6,7 +6,6 @@ import {
   StyleSheet,
   StatusBar,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 import Icon5 from "react-native-vector-icons/FontAwesome5";
@@ -18,6 +17,16 @@ import { PRIORITY_RANK } from "../constants/priorities";
 import { getTodayString } from "../utils/dateUtils";
 import { getInsights, getInsightMessage } from "../utils/insightsUtils";
 import { calculateStreak } from "../utils/streakUtils";
+
+function SectionHeader({ label, count }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      <View style={styles.sectionLine} />
+      <Text style={styles.sectionCount}>{count}</Text>
+    </View>
+  );
+}
 
 export default function TasksScreen({ navigation, userData }) {
   const [tasks, setTasks] = useState([]);
@@ -58,22 +67,13 @@ export default function TasksScreen({ navigation, userData }) {
     }
   }
 
-  function confirmDeleteTask(id) {
-    Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await api.delete(`/tasks/${id}`);
-            fetchTasks();
-          } catch (error) {
-            showToast("Failed to delete task");
-          }
-        },
-      },
-    ]);
+  async function deleteTask(id) {
+    try {
+      await api.delete(`/tasks/${id}`);
+      fetchTasks();
+    } catch (error) {
+      showToast("Failed to delete task");
+    }
   }
 
   const today = getTodayString();
@@ -105,6 +105,27 @@ export default function TasksScreen({ navigation, userData }) {
     return result;
   }
 
+  function getListData() {
+    const sorted = getDisplayedTasks();
+
+    if (filter !== "all") return sorted;
+
+    const pendingItems = sorted.filter((t) => !t.completed);
+    const completedItems = sorted.filter((t) => t.completed);
+    const data = [];
+
+    if (pendingItems.length > 0) {
+      data.push({ _type: "header", _key: "header-pending", label: "PENDING", count: pendingItems.length });
+      pendingItems.forEach((t) => data.push(t));
+    }
+    if (completedItems.length > 0) {
+      data.push({ _type: "header", _key: "header-completed", label: "COMPLETED", count: completedItems.length });
+      completedItems.forEach((t) => data.push(t));
+    }
+
+    return data;
+  }
+
   const EmptyState = ({ filtered }) => (
     <View style={styles.emptyState}>
       <Icon name="inbox" size={48} color="#ddd" />
@@ -119,17 +140,22 @@ export default function TasksScreen({ navigation, userData }) {
     </View>
   );
 
-  const renderItem = ({ item }) => (
-    <TaskItem
-      item={item}
-      today={today}
-      isCompleting={completingId === item.id}
-      onToggle={toggleTaskComplete}
-      onDetails={(task) => navigation.navigate("TaskDetails", { task })}
-      onEdit={(id) => navigation.navigate("EditTask", { taskId: id })}
-      onDelete={confirmDeleteTask}
-    />
-  );
+  const renderItem = ({ item }) => {
+    if (item._type === "header") {
+      return <SectionHeader label={item.label} count={item.count} />;
+    }
+    return (
+      <TaskItem
+        item={item}
+        today={today}
+        isCompleting={completingId === item.id}
+        onToggle={toggleTaskComplete}
+        onDetails={(task) => navigation.navigate("TaskDetails", { task })}
+        onEdit={(id) => navigation.navigate("EditTask", { taskId: id })}
+        onDelete={deleteTask}
+      />
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -248,10 +274,11 @@ export default function TasksScreen({ navigation, userData }) {
         <EmptyState filtered={false} />
       ) : (
         <FlatList
-          data={getDisplayedTasks()}
+          data={getListData()}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item._key || item.id.toString()}
           ListEmptyComponent={<EmptyState filtered={true} />}
+          contentContainerStyle={styles.listContent}
         />
       )}
     </View>
@@ -261,6 +288,7 @@ export default function TasksScreen({ navigation, userData }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#f5f2f8",
   },
   dashboard: {
     marginHorizontal: 14,
@@ -433,5 +461,33 @@ const styles = StyleSheet.create({
   },
   controlBtnTextActive: {
     color: "#fff",
+  },
+  listContent: {
+    paddingTop: 4,
+    paddingBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 6,
+    gap: 10,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#451E5D",
+    letterSpacing: 1.2,
+  },
+  sectionLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e4dced",
+  },
+  sectionCount: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#bbb",
   },
 });

@@ -1,189 +1,240 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { PRIORITY_COLORS } from '../constants/priorities';
+import OverflowMenu from './OverflowMenu';
+import DeleteConfirmModal from './DeleteConfirmModal';
 
 export default function TaskItem({ item, today, isCompleting, onToggle, onDetails, onEdit, onDelete }) {
+  const overflowRef = useRef(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [deleteVisible, setDeleteVisible] = useState(false);
+
+  const hasSubs = item.subtasks_total > 0;
+  const subsDone = item.subtasks_completed === item.subtasks_total;
+  const subsPercent = hasSubs
+    ? Math.round((item.subtasks_completed / item.subtasks_total) * 100)
+    : 0;
+  const priorityColor = PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.medium;
+  const isHighPriority = item.priority === 'high' && !item.completed;
+
   return (
+    <>
     <TouchableOpacity
       activeOpacity={0.75}
       onPress={() => onDetails(item)}
       style={[
-        styles.taskItem,
-        isCompleting && { opacity: 0.45 },
-        item.priority === 'high' && !item.completed && styles.taskItemHighPriority,
-      ]}>
-      <View style={styles.taskDetails}>
-        <Text style={[styles.taskTitle, item.completed && styles.completedTask]}>
+        styles.card,
+        isHighPriority && styles.cardHighPriority,
+        isCompleting && styles.cardCompleting,
+      ]}
+    >
+      {/* Row 1: check · title · overflow */}
+      <View style={styles.topRow}>
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation?.(); onToggle(item.id); }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon
+            name={item.completed ? 'check-circle' : 'circle-o'}
+            size={22}
+            color={item.completed ? '#27ae60' : '#c4c4c4'}
+          />
+        </TouchableOpacity>
+
+        <Text
+          style={[styles.title, item.completed && styles.titleDone]}
+          numberOfLines={2}
+        >
           {item.title}
         </Text>
-        <View style={styles.dueDateRow}>
-          <Text style={styles.taskDueDate}>{item.due_date || 'No due date'}</Text>
-          {!item.completed && item.due_date && item.due_date < today && (
-            <View style={[styles.dateBadge, styles.dateBadgeOverdue]}>
-              <Text style={styles.dateBadgeText}>Overdue</Text>
-            </View>
-          )}
-          {!item.completed && item.due_date === today && (
-            <View style={[styles.dateBadge, styles.dateBadgeToday]}>
-              <Text style={styles.dateBadgeText}>Today</Text>
-            </View>
-          )}
-        </View>
-        <View style={[styles.priorityBadge, { backgroundColor: PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.medium }]}>
-          <Text style={styles.priorityText}>{(item.priority || 'medium').toUpperCase()}</Text>
-        </View>
-        {item.subtasks_total > 0 && (
-          <View style={styles.subtaskProgressRow}>
-            <View style={styles.subtaskProgressTrack}>
-              <View
-                style={[
-                  styles.subtaskProgressFill,
-                  {
-                    width: `${Math.round((item.subtasks_completed / item.subtasks_total) * 100)}%`,
-                    backgroundColor:
-                      item.subtasks_completed === item.subtasks_total ? '#27ae60' : '#451E5D',
-                  },
-                ]}
-              />
-            </View>
-            <Text
+
+        <TouchableOpacity
+          ref={overflowRef}
+          onPress={(e) => { e.stopPropagation?.(); setMenuVisible(true); }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon name="ellipsis-v" size={16} color="#bbb" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Row 2: subtask progress (conditional) */}
+      {hasSubs && (
+        <View style={styles.progressRow}>
+          <View style={styles.progressTrack}>
+            <View
               style={[
-                styles.subtaskProgressLabel,
-                item.subtasks_completed === item.subtasks_total && styles.subtaskProgressLabelDone,
-              ]}>
-              {item.subtasks_completed}/{item.subtasks_total}
-            </Text>
+                styles.progressFill,
+                {
+                  width: `${subsPercent}%`,
+                  backgroundColor: subsDone ? '#27ae60' : '#451E5D',
+                },
+              ]}
+            />
+          </View>
+          <Text style={[styles.progressLabel, subsDone && styles.progressLabelDone]}>
+            {item.subtasks_completed}/{item.subtasks_total}
+          </Text>
+        </View>
+      )}
+
+      {/* Row 3: priority dot · due date · status badge */}
+      <View style={styles.metaRow}>
+        <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+        <Text style={[styles.priorityLabel, { color: priorityColor }]}>
+          {(item.priority || 'medium').toUpperCase()}
+        </Text>
+        {item.due_date && (
+          <>
+            <View style={styles.metaSep} />
+            <Text style={styles.dueDate}>{item.due_date}</Text>
+          </>
+        )}
+        {!item.completed && item.due_date && item.due_date < today && (
+          <View style={[styles.statusBadge, styles.statusOverdue]}>
+            <Text style={styles.statusText}>Overdue</Text>
+          </View>
+        )}
+        {!item.completed && item.due_date === today && (
+          <View style={[styles.statusBadge, styles.statusToday]}>
+            <Text style={styles.statusText}>Today</Text>
           </View>
         )}
       </View>
-      <View style={styles.iconContainer}>
-        <TouchableOpacity onPress={() => onToggle(item.id)}>
-          <Icon
-            name={item.completed ? 'times-circle' : 'check-circle'}
-            size={24}
-            color={item.completed ? '#888' : '#451E5D'}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => onDetails(item)}>
-          <Icon name="info-circle" size={24} color="#451E5D" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => onEdit(item.id)}>
-          <Icon name="edit" size={24} color="#451E5D" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => onDelete(item.id)}>
-          <Icon name="trash" size={24} color="#451E5D" />
-        </TouchableOpacity>
-      </View>
     </TouchableOpacity>
+
+    <OverflowMenu
+      visible={menuVisible}
+      anchorRef={overflowRef}
+      onClose={() => setMenuVisible(false)}
+      onEdit={() => onEdit(item.id)}
+      onDelete={() => setDeleteVisible(true)}
+    />
+
+    <DeleteConfirmModal
+      visible={deleteVisible}
+      taskTitle={item.title}
+      onCancel={() => setDeleteVisible(false)}
+      onConfirm={() => { setDeleteVisible(false); onDelete(item.id); }}
+    />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  taskItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginVertical: 5,
-    marginHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    shadowColor: '#451E5D',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
     elevation: 2,
   },
-  taskItemHighPriority: {
-    borderLeftWidth: 3,
+  cardHighPriority: {
+    borderLeftWidth: 4,
     borderLeftColor: '#c0392b',
-    backgroundColor: '#fff9f9',
   },
-  taskDetails: {
+  cardCompleting: {
+    opacity: 0.4,
+  },
+
+  // Row 1
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
+  },
+  title: {
     flex: 1,
-    marginRight: 8,
-  },
-  taskTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1a1a1a',
+    lineHeight: 21,
   },
-  completedTask: {
+  titleDone: {
     textDecorationLine: 'line-through',
-    color: '#aaa',
+    color: '#c0c0c0',
   },
-  dueDateRow: {
+
+  // Row 2
+  progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 2,
+    gap: 8,
+    marginBottom: 10,
+    paddingLeft: 32,
   },
-  taskDueDate: {
-    fontSize: 12,
-    color: '#888',
-  },
-  dateBadge: {
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  dateBadgeOverdue: {
-    backgroundColor: '#fdecea',
-  },
-  dateBadgeToday: {
-    backgroundColor: '#ede7f6',
-  },
-  dateBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#451E5D',
-  },
-  priorityBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginTop: 4,
-  },
-  priorityText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  iconContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: 140,
-  },
-  subtaskProgressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 6,
-  },
-  subtaskProgressTrack: {
+  progressTrack: {
     flex: 1,
     height: 4,
     backgroundColor: '#f0f0f0',
     borderRadius: 2,
     overflow: 'hidden',
   },
-  subtaskProgressFill: {
+  progressFill: {
     height: 4,
     borderRadius: 2,
   },
-  subtaskProgressLabel: {
+  progressLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#451E5D',
+    minWidth: 28,
+    textAlign: 'right',
+  },
+  progressLabelDone: {
+    color: '#27ae60',
+  },
+
+  // Row 3
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 5,
+    paddingLeft: 32,
+  },
+  priorityDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  priorityLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  metaSep: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#d0d0d0',
+  },
+  dueDate: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '500',
+  },
+  statusBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  statusOverdue: {
+    backgroundColor: '#fdecea',
+  },
+  statusToday: {
+    backgroundColor: '#ede7f6',
+  },
+  statusText: {
     fontSize: 10,
     fontWeight: '700',
     color: '#451E5D',
-    minWidth: 24,
-    textAlign: 'right',
-  },
-  subtaskProgressLabelDone: {
-    color: '#27ae60',
   },
 });
