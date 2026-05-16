@@ -92,14 +92,6 @@ export default function ForgotPasswordScreen({ navigation }) {
                 ? <ActivityIndicator color="#fff" size="small" />
                 : <Text style={styles.primaryBtnText}>Send Reset Link</Text>}
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.linkRow}
-              onPress={() => navigation.navigate('ResetPassword', { email: email.trim() })}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.linkText}>Already have a reset token?</Text>
-            </TouchableOpacity>
           </>
         ) : (
           /* ── Success state ── */
@@ -125,14 +117,6 @@ export default function ForgotPasswordScreen({ navigation }) {
               activeOpacity={0.85}
             >
               <Text style={styles.outlineBtnText}>Try a different email</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.linkRow}
-              onPress={() => navigation.navigate('ResetPassword', { email: email.trim() })}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.linkText}>Enter reset token from email</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -217,8 +201,6 @@ const styles = StyleSheet.create({
   },
   btnDisabled:     { opacity: 0.6 },
   primaryBtnText:  { color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
-  linkRow:         { alignItems: 'center', paddingVertical: 8 },
-  linkText:        { fontSize: 14, color: '#451E5D', fontWeight: '600' },
 
   // ── Success state ──
   successBox: {
