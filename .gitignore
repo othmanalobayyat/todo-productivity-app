@@ -1,6 +1,6 @@
 # ============================================================
-# Root-level .gitignore for the TaskFlow monorepo
-# Covers: React Native (Expo) frontend + Laravel backend + Node.js backend
+# Root-level .gitignore for the Todo Productivity App monorepo
+# Covers: React Native (Expo) frontend + Node.js backend + Laravel backend
 # ============================================================
 
 # ──────────────────────────────

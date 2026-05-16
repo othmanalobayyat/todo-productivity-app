@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Image, View, StyleSheet, StatusBar } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import * as Linking from "expo-linking";
@@ -6,7 +6,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/FontAwesome";
-import api from "./src/services/api";
+import api, { registerLogoutCallback } from "./src/services/api";
 import { AUTH_TOKEN_KEY } from "./src/constants/storage";
 
 import LoginScreen from "./src/screens/LoginScreen";
@@ -122,10 +122,17 @@ export default function App() {
     setUserData(user);
   };
 
-  const handleLogoutSuccess = () => {
+  const handleLogoutSuccess = useCallback(() => {
     setIsLoggedIn(false);
     setUserData(null);
-  };
+  }, []);
+
+  // Register the logout callback with the Axios response interceptor so that
+  // any mid-session 401 (expired token) immediately triggers a clean logout
+  // without requiring an app restart.
+  useEffect(() => {
+    registerLogoutCallback(handleLogoutSuccess);
+  }, [handleLogoutSuccess]);
 
   const handleProfileUpdate = (updatedUser) => {
     setUserData(updatedUser);
