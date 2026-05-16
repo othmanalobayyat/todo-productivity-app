@@ -142,7 +142,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
         {/* Forgot */}
         <TouchableOpacity
           style={styles.forgotRow}
-          onPress={() => showToast('Password reset coming soon.')}
+          onPress={() => navigation.navigate('ForgotPassword')}
         >
           <Text style={styles.forgotText}>Forgot password?</Text>
         </TouchableOpacity>

@@ -63,9 +63,19 @@ export default function ProfileScreen({ navigation, userData, onLogoutSuccess })
           </View>
         </View>
 
+        {/* Security */}
+        <Text style={[styles.sectionTitle, { marginTop: 28 }]}>Security</Text>
+        <TouchableOpacity
+          style={styles.aboutRow}
+          onPress={() => navigation.navigate('ChangePassword')}
+          activeOpacity={0.7}>
+          <Text style={styles.aboutRowText}>Change Password</Text>
+          <Text style={styles.aboutRowChevron}>›</Text>
+        </TouchableOpacity>
+
         {/* Edit Profile */}
         <TouchableOpacity
-          style={styles.editButton}
+          style={[styles.editButton, { marginTop: 28 }]}
           onPress={() => navigation.navigate('EditProfile', { userData })}>
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Image, View, StyleSheet, StatusBar } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
+import * as Linking from "expo-linking";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -10,6 +11,9 @@ import { AUTH_TOKEN_KEY } from "./src/constants/storage";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
+import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "./src/screens/ResetPasswordScreen";
+import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import EditProfileScreen from "./src/screens/EditProfileScreen";
 import TasksScreen from "./src/screens/TasksScreen";
@@ -24,6 +28,15 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const MIN_SPLASH_MS = 1500;
+
+const linking = {
+  prefixes: [Linking.createURL("/"), "todoapp://"],
+  config: {
+    screens: {
+      ResetPassword: "reset-password",
+    },
+  },
+};
 
 const SplashScreen = () => (
   <View style={styles.splashContainer}>
@@ -131,10 +144,10 @@ export default function App() {
 
   return (
     <>
-      <NavigationContainer>
+      <NavigationContainer linking={linking}>
         <StatusBar backgroundColor="#451E5D" />
         <Stack.Navigator initialRouteName={isLoggedIn ? "Main" : "Welcome"}>
-          {!isLoggedIn ? (
+          {!isLoggedIn && (
             <>
               <Stack.Screen
                 name="Welcome"
@@ -154,8 +167,14 @@ export default function App() {
                   />
                 )}
               </Stack.Screen>
+              <Stack.Screen
+                name="ForgotPassword"
+                component={ForgotPasswordScreen}
+                options={{ headerShown: false }}
+              />
             </>
-          ) : (
+          )}
+          {isLoggedIn && (
             <>
               <Stack.Screen name="Main" options={{ headerShown: false }}>
                 {() => (
@@ -182,6 +201,11 @@ export default function App() {
                 options={headerOptions("Task Details")}
               />
               <Stack.Screen
+                name="ChangePassword"
+                component={ChangePasswordScreen}
+                options={headerOptions("Change Password")}
+              />
+              <Stack.Screen
                 name="EditProfile"
                 options={headerOptions("Edit Profile")}
               >
@@ -194,6 +218,12 @@ export default function App() {
               </Stack.Screen>
             </>
           )}
+          {/* Always registered so deep links work regardless of auth state */}
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPasswordScreen}
+            options={{ headerShown: false }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
       <Toast ref={toastRef} />
