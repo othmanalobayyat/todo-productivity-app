@@ -14,7 +14,7 @@ import Icon5 from 'react-native-vector-icons/FontAwesome5';
 import { Ionicons } from '@expo/vector-icons';
 import { showToast } from '../components/Toast';
 import AppHeader from '../components/AppHeader';
-import api from '../services/api';
+import api, { clearCachedToken } from '../services/api';
 import { AUTH_TOKEN_KEY } from '../constants/storage';
 import { calculateStreak } from '../utils/streakUtils';
 
@@ -45,14 +45,11 @@ export default function ProfileScreen({ navigation, userData, onLogoutSuccess })
   const handleLogout = async () => {
     try {
       await api.post('/logout');
-      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-      onLogoutSuccess();
-      showToast('Logged out successfully', 'success');
-    } catch (error) {
-      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-      onLogoutSuccess();
-      showToast('Error logging out');
-    }
+    } catch (_) {}
+    clearCachedToken();
+    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+    onLogoutSuccess();
+    showToast('Logged out successfully', 'success');
   };
 
   const initials = userData?.name?.trim().charAt(0).toUpperCase() || '?';

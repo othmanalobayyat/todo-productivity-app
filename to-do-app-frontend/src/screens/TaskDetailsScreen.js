@@ -54,12 +54,16 @@ export default function TaskDetailsScreen({ route }) {
   async function handleAddSubtask() {
     const title = newSubtaskTitle.trim();
     if (!title || adding) return;
+    const tempId = `temp_${Date.now()}`;
+    setSubtasks((prev) => [...prev, { id: tempId, title, completed: false, task_id: task.id }]);
+    setNewSubtaskTitle('');
     setAdding(true);
     try {
-      await api.post(`/tasks/${task.id}/subtasks`, { title });
-      setNewSubtaskTitle('');
-      await fetchSubtasks();
+      const response = await api.post(`/tasks/${task.id}/subtasks`, { title });
+      setSubtasks((prev) => prev.map((s) => (s.id === tempId ? response.data : s)));
     } catch (error) {
+      setSubtasks((prev) => prev.filter((s) => s.id !== tempId));
+      setNewSubtaskTitle(title);
       showToast('Failed to add subtask');
     } finally {
       setAdding(false);
@@ -67,10 +71,15 @@ export default function TaskDetailsScreen({ route }) {
   }
 
   async function handleToggle(subtaskId) {
+    const original = subtasks.find((s) => s.id === subtaskId);
+    if (!original) return;
+    setSubtasks((prev) =>
+      prev.map((s) => (s.id === subtaskId ? { ...s, completed: !s.completed } : s)),
+    );
     try {
       await api.patch(`/tasks/${task.id}/subtasks/${subtaskId}/toggle`);
-      await fetchSubtasks();
     } catch (error) {
+      setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? original : s)));
       showToast('Failed to update subtask');
     }
   }
@@ -94,10 +103,12 @@ export default function TaskDetailsScreen({ route }) {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            const prevSubtasks = subtasks;
+            setSubtasks((prev) => prev.filter((s) => s.id !== subtaskId));
             try {
               await api.delete(`/tasks/${task.id}/subtasks/${subtaskId}`);
-              await fetchSubtasks();
             } catch (error) {
+              setSubtasks(prevSubtasks);
               showToast('Failed to delete subtask');
             }
           },

@@ -8,21 +8,19 @@ router.get("/tasks", authMiddleware, async function (req, res) {
   try {
     var tasks = await Prisma.tasks.findMany({
       where: { user_id: req.user.userId },
-      include: { _count: { select: { subtasks: true } } },
+      include: {
+        _count: { select: { subtasks: true } },
+        subtasks: { where: { completed: true }, select: { id: true } },
+      },
     });
-    var result = await Promise.all(
-      tasks.map(async function (task) {
-        var completedCount = await Prisma.subtasks.count({
-          where: { task_id: task.id, completed: true },
-        });
-        var { _count, ...taskFields } = task;
-        return {
-          ...taskFields,
-          subtasks_total: _count.subtasks,
-          subtasks_completed: completedCount,
-        };
-      }),
-    );
+    var result = tasks.map(function (task) {
+      var { _count, subtasks: completedSubs, ...taskFields } = task;
+      return {
+        ...taskFields,
+        subtasks_total: _count.subtasks,
+        subtasks_completed: completedSubs.length,
+      };
+    });
 
     res.json(result);
   } catch (error) {

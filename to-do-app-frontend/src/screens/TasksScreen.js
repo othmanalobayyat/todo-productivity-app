@@ -33,44 +33,57 @@ export default function TasksScreen({ navigation, userData }) {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // 'all' | 'completed' | 'pending'
   const [sort, setSort] = useState("priority"); // 'priority' | 'due_date'
-  const [completingId, setCompletingId] = useState(null);
 
   useEffect(() => {
-    fetchTasks();
-    const unsubscribe = navigation.addListener("focus", fetchTasks);
+    fetchTasks(true);
+    const unsubscribe = navigation.addListener("focus", () => fetchTasks(false));
     return unsubscribe;
   }, [navigation]);
 
-  async function fetchTasks() {
-    setIsLoading(true);
+  // isInitialLoad=true: show full loading state (first mount or empty list)
+  // isInitialLoad=false: silently refresh in background, keep showing stale data
+  async function fetchTasks(isInitialLoad = false) {
+    if (isInitialLoad) setIsLoading(true);
     try {
       const response = await api.get("/tasks");
       const validTasks = response.data.filter((task) => task.id && task.title);
       setTasks(validTasks);
     } catch (error) {
-      showToast("Unable to fetch tasks");
+      if (isInitialLoad) showToast("Unable to fetch tasks");
     } finally {
-      setIsLoading(false);
+      if (isInitialLoad) setIsLoading(false);
     }
   }
 
   async function toggleTaskComplete(id) {
-    setCompletingId(id);
+    const original = tasks.find((t) => t.id === id);
+    if (!original) return;
+    const nowCompleted = !original.completed;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, completed: nowCompleted, completed_at: nowCompleted ? new Date().toISOString() : null }
+          : t,
+      ),
+    );
     try {
-      await api.patch(`/tasks/${id}/complete`, {});
-      await fetchTasks();
+      const response = await api.patch(`/tasks/${id}/complete`, {});
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...response.data } : t)),
+      );
     } catch (error) {
+      setTasks((prev) => prev.map((t) => (t.id === id ? original : t)));
       showToast("Failed to update task");
-    } finally {
-      setCompletingId(null);
     }
   }
 
   async function deleteTask(id) {
+    const prevTasks = tasks;
+    setTasks((prev) => prev.filter((t) => t.id !== id));
     try {
       await api.delete(`/tasks/${id}`);
-      fetchTasks();
     } catch (error) {
+      setTasks(prevTasks);
       showToast("Failed to delete task");
     }
   }
@@ -147,7 +160,6 @@ export default function TasksScreen({ navigation, userData }) {
       <TaskItem
         item={item}
         today={today}
-        isCompleting={completingId === item.id}
         onToggle={toggleTaskComplete}
         onDetails={(task) => navigation.navigate("TaskDetails", { task })}
         onEdit={(id) => navigation.navigate("EditTask", { taskId: id })}

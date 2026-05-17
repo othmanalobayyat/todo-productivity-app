@@ -16,15 +16,30 @@ let _logoutCallback = null;
 // Guards against multiple simultaneous 401 responses all triggering logout.
 let _isHandlingExpiry = false;
 
+// In-memory token cache — avoids an AsyncStorage filesystem read on every
+// request. Warmed lazily on first request, set explicitly after login, and
+// cleared on logout or 401.
+let _cachedToken = null;
+
 export function registerLogoutCallback(fn) {
   _logoutCallback = fn;
 }
 
+export function setCachedToken(token) {
+  _cachedToken = token;
+}
+
+export function clearCachedToken() {
+  _cachedToken = null;
+}
+
 // ── Request interceptor — injects Bearer token ──────────────────────────────
 api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (_cachedToken === null) {
+    _cachedToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+  }
+  if (_cachedToken) {
+    config.headers.Authorization = `Bearer ${_cachedToken}`;
   }
   return config;
 });
@@ -35,6 +50,7 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401 && !_isHandlingExpiry) {
       _isHandlingExpiry = true;
+      _cachedToken = null;
       await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
       if (_logoutCallback) {
         _logoutCallback();
