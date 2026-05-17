@@ -10,18 +10,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../services/api';
 import { showToast } from '../components/Toast';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import DatePickerField from '../components/DatePickerField';
 import { formatLocalDate } from '../utils/dateUtils';
-
-const isValidDate = (str) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
-  const d = new Date(str + 'T00:00:00');
-  return !isNaN(d.getTime());
-};
 
 export default function EditTaskScreen({ route, navigation }) {
   const { taskId } = route.params;
@@ -34,10 +27,7 @@ export default function EditTaskScreen({ route, navigation }) {
     priority: 'medium',
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [categories, setCategories] = useState([]);
-  const [webDateText, setWebDateText] = useState(formatLocalDate(new Date()));
-  const [webDateError, setWebDateError] = useState('');
 
   useEffect(() => {
     fetchTask();
@@ -61,7 +51,6 @@ export default function EditTaskScreen({ route, navigation }) {
         completed: response.data.completed,
         priority: response.data.priority ?? 'medium',
       });
-      setWebDateText(formatLocalDate(resolvedDate));
     } catch (error) {
       showToast('Failed to fetch task details.');
     } finally {
@@ -100,24 +89,6 @@ export default function EditTaskScreen({ route, navigation }) {
       showToast('Failed to update task.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setTask({ ...task, dueDate: selectedDate });
-    }
-  };
-
-  const handleWebDateChange = (text) => {
-    setWebDateText(text);
-    if (isValidDate(text)) {
-      const [y, m, d] = text.split('-').map(Number);
-      setTask((prev) => ({ ...prev, dueDate: new Date(y, m - 1, d) }));
-      setWebDateError('');
-    } else {
-      setWebDateError('Use format YYYY-MM-DD');
     }
   };
 
@@ -198,41 +169,10 @@ export default function EditTaskScreen({ route, navigation }) {
 
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Due Date</Text>
-            {Platform.OS === 'web' ? (
-              <View>
-                <TextInput
-                  value={webDateText}
-                  onChangeText={handleWebDateChange}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#B0AABF"
-                  style={[styles.input, webDateError ? styles.inputError : null]}
-                  maxLength={10}
-                />
-                {webDateError ? (
-                  <Text style={styles.webDateErrorText}>{webDateError}</Text>
-                ) : null}
-              </View>
-            ) : (
-              <>
-                <TouchableOpacity
-                  onPress={() => setShowDatePicker(true)}
-                  style={styles.datePickerButton}
-                  activeOpacity={0.7}>
-                  <Icon name="calendar-today" size={17} color="#451E5D" />
-                  <Text style={styles.datePickerText}>{formatLocalDate(task.dueDate)}</Text>
-                  <Icon name="chevron-right" size={18} color="#B0AABF" />
-                </TouchableOpacity>
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={task.dueDate}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'default' : 'spinner'}
-                    textColor="#333"
-                    onChange={handleDateChange}
-                  />
-                )}
-              </>
-            )}
+            <DatePickerField
+              value={task.dueDate}
+              onChange={(date) => setTask((prev) => ({ ...prev, dueDate: date }))}
+            />
           </View>
 
         </View>
@@ -315,30 +255,6 @@ const styles = StyleSheet.create({
   picker: {
     width: '100%',
     color: '#1A0A2E',
-  },
-  datePickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#F8F6FB',
-    borderWidth: 1.5,
-    borderColor: '#E8E2F0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  datePickerText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1A0A2E',
-  },
-  inputError: {
-    borderColor: '#E05555',
-  },
-  webDateErrorText: {
-    fontSize: 12,
-    color: '#E05555',
-    marginTop: 4,
   },
   primaryBtn: {
     backgroundColor: '#451E5D',
