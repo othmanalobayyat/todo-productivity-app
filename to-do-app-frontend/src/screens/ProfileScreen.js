@@ -49,7 +49,6 @@ export default function ProfileScreen({ navigation, userData, onLogoutSuccess })
       onLogoutSuccess();
       showToast('Logged out successfully', 'success');
     } catch (error) {
-      console.error('Error logging out:', error);
       await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
       onLogoutSuccess();
       showToast('Error logging out');

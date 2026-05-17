@@ -137,7 +137,6 @@ export default function ResetPasswordScreen({ navigation, route }) {
         )}
 
         <View style={styles.fields}>
-          {/* New password */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>New Password</Text>
             <View style={rowStyle('password')}>
@@ -166,7 +165,6 @@ export default function ResetPasswordScreen({ navigation, route }) {
             {!!errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
-          {/* Confirm password */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Confirm New Password</Text>
             <View style={rowStyle('confirmPassword')}>

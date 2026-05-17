@@ -6,7 +6,6 @@ var { body, validationResult } = require("express-validator");
 
 router.get("/tasks", authMiddleware, async function (req, res) {
   try {
-    // Fetch tasks with subtask count
     var tasks = await Prisma.tasks.findMany({
       where: { user_id: req.user.userId },
       include: { _count: { select: { subtasks: true } } },

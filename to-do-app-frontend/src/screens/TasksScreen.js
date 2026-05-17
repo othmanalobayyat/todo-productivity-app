@@ -48,7 +48,6 @@ export default function TasksScreen({ navigation, userData }) {
       const validTasks = response.data.filter((task) => task.id && task.title);
       setTasks(validTasks);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
       showToast("Unable to fetch tasks");
     } finally {
       setIsLoading(false);

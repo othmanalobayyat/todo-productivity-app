@@ -6,7 +6,6 @@ var app = express();
 // Trust Render/reverse-proxy headers so express-rate-limit sees the real client IP.
 app.set("trust proxy", 1);
 
-// middleware
 var allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map(function (o) { return o.trim(); })
   : "*";
@@ -14,7 +13,6 @@ var allowedOrigins = process.env.CORS_ORIGIN
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
-// routes
 const auth = require("./routes/auth.js");
 app.use("/api", auth);
 
@@ -35,7 +33,6 @@ app.get("/ping", function (req, res) {
   res.json({ message: "pong" });
 });
 
-// start server
 app.listen(process.env.PORT || 3000, function () {
   console.log("Server running on port " + (process.env.PORT || 3000));
 });

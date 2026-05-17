@@ -68,7 +68,6 @@ export default function ChangePasswordScreen({ navigation }) {
         </Text>
 
         <View style={styles.card}>
-          {/* Current password */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Current Password</Text>
             <View style={rowStyle('currentPassword')}>
@@ -99,7 +98,6 @@ export default function ChangePasswordScreen({ navigation }) {
 
           <View style={styles.separator} />
 
-          {/* New password */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>New Password</Text>
             <View style={rowStyle('newPassword')}>
@@ -130,7 +128,6 @@ export default function ChangePasswordScreen({ navigation }) {
 
           <View style={styles.separator} />
 
-          {/* Confirm new password */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Confirm New Password</Text>
             <View style={rowStyle('confirmPassword')}>
@@ -190,7 +187,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
 
-  // Card
   card: {
     backgroundColor: '#fff',
     borderRadius: 14,

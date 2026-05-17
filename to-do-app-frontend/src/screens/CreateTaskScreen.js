@@ -44,7 +44,6 @@ export default function CreateTaskScreen({ navigation }) {
       const response = await api.get('/task-categories');
       setCategories(response.data);
     } catch (error) {
-      console.error('Error fetching categories:', error.message);
       showToast('Could not load categories.');
     }
   };
@@ -68,7 +67,6 @@ export default function CreateTaskScreen({ navigation }) {
       showToast('Task created successfully', 'success');
       navigation.goBack();
     } catch (error) {
-      console.error('Error creating task:', error.message);
       showToast('Unable to create task.');
     } finally {
       setIsLoading(false);

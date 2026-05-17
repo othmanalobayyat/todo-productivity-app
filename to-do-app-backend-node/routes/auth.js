@@ -108,7 +108,6 @@ router.post("/logout", authMiddleware, function (req, res) {
   res.json({ message: "Logged out successfully" });
 });
 
-// POST /forgot-password
 router.post(
   "/forgot-password",
   passwordResetLimiter,
@@ -236,7 +235,6 @@ router.post(
   },
 );
 
-// POST /reset-password
 router.post(
   "/reset-password",
   passwordResetLimiter,
@@ -308,7 +306,6 @@ router.post(
   },
 );
 
-// PUT /change-password
 router.put(
   "/change-password",
   authMiddleware,

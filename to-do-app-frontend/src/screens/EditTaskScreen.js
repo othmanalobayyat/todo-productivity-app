@@ -63,7 +63,6 @@ export default function EditTaskScreen({ route, navigation }) {
       });
       setWebDateText(formatLocalDate(resolvedDate));
     } catch (error) {
-      console.error('Error fetching task:', error);
       showToast('Failed to fetch task details.');
     } finally {
       setIsLoading(false);
@@ -75,7 +74,6 @@ export default function EditTaskScreen({ route, navigation }) {
       const response = await api.get('/task-categories');
       setCategories(response.data);
     } catch (error) {
-      console.error('Error fetching categories:', error);
       showToast('Could not load categories.');
     }
   };
@@ -99,7 +97,6 @@ export default function EditTaskScreen({ route, navigation }) {
       showToast('Task updated successfully', 'success');
       navigation.goBack();
     } catch (error) {
-      console.error('Error updating task:', error);
       showToast('Failed to update task.');
     } finally {
       setIsLoading(false);
