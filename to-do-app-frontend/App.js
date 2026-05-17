@@ -8,6 +8,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/FontAwesome";
 import api, { registerLogoutCallback } from "./src/services/api";
 import { AUTH_TOKEN_KEY } from "./src/constants/storage";
+import { checkForUpdate } from "./src/services/updateService";
+import UpdateModal from "./src/components/UpdateModal";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
@@ -82,6 +84,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [updateInfo, setUpdateInfo] = useState(null);
 
   useEffect(() => {
     const start = Date.now();
@@ -104,6 +107,13 @@ export default function App() {
     }
 
     async function initApp() {
+      // Fire update check in the background — never blocks or delays startup.
+      // Resolves during the splash window on a normal connection; if slower,
+      // the modal simply appears shortly after the app loads.
+      checkForUpdate()
+        .then((info) => { if (info) setUpdateInfo(info); })
+        .catch(() => {});
+
       await checkAuthStatus();
       // Keep splash visible for at least MIN_SPLASH_MS, but no longer.
       const elapsed = Date.now() - start;
@@ -233,6 +243,15 @@ export default function App() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+      <UpdateModal
+        visible={updateInfo !== null}
+        info={updateInfo}
+        onUpdate={() => {
+          Linking.openURL(updateInfo.downloadUrl);
+          setUpdateInfo(null);
+        }}
+        onLater={() => setUpdateInfo(null)}
+      />
       <Toast ref={toastRef} />
     </>
   );
