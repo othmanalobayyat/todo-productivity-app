@@ -251,7 +251,7 @@ export default function ProfileScreen({
                 resizeMode="contain"
               />
               <Text style={styles.modalAppName}>Todo Productivity App</Text>
-              <Text style={styles.modalVersion}>Version 1.0.1</Text>
+              <Text style={styles.modalVersion}>Version 1.0.2</Text>
             </View>
 
             <Text style={styles.modalDescription}>
