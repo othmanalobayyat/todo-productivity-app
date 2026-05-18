@@ -19,28 +19,46 @@ import { loadCachedTasks, saveTasks } from '../services/taskCache';
 import { enqueueOperation } from '../services/writeQueue';
 import { triggerTaskRefresh } from '../services/taskEvents';
 import { checkIsOffline } from '../utils/networkUtils';
+import { loadCachedCategories, fetchAndCacheCategories } from '../services/categoryCache';
 
 export default function CreateTaskScreen({ navigation }) {
   const [title, setTitle]             = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate]         = useState(new Date());
   const [category, setCategory]       = useState('');
-  const [categories, setCategories]   = useState([]);
-  const [priority, setPriority]       = useState('medium');
-  const [isLoading, setIsLoading]     = useState(false);
+  const [categories, setCategories]         = useState([]);
+  const [categoriesUnavailable, setCategoriesUnavailable] = useState(false);
+  const [priority, setPriority]             = useState('medium');
+  const [isLoading, setIsLoading]           = useState(false);
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    let mounted = true;
 
-  const fetchCategories = async () => {
-    try {
-      const response = await api.get('/task-categories');
-      setCategories(response.data);
-    } catch (error) {
-      showToast('Could not load categories.');
+    async function loadCategories() {
+      // Step 1: show cached categories immediately if available.
+      const cached = await loadCachedCategories();
+      if (mounted && cached) {
+        setCategories(cached);
+        setCategoriesUnavailable(false);
+      }
+
+      // Step 2: fetch fresh data and update the picker.
+      try {
+        const fresh = await fetchAndCacheCategories();
+        if (mounted) {
+          setCategories(fresh);
+          setCategoriesUnavailable(false);
+        }
+      } catch {
+        // Network failed — keep whatever was shown from cache.
+        // Only show the unavailable hint when there is nothing to display.
+        if (mounted && !cached) setCategoriesUnavailable(true);
+      }
     }
-  };
+
+    loadCategories();
+    return () => { mounted = false; };
+  }, []);
 
   const handleCreateTask = async () => {
     if (!title.trim()) {
@@ -155,6 +173,9 @@ export default function CreateTaskScreen({ navigation }) {
                 ))}
               </Picker>
             </View>
+            {categoriesUnavailable && (
+              <Text style={styles.fieldHint}>Categories unavailable offline</Text>
+            )}
           </View>
 
           <View style={styles.fieldGroup}>
@@ -278,5 +299,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
+  },
+  fieldHint: {
+    fontSize: 12,
+    color: '#9c6fb5',
+    marginTop: 4,
   },
 });
