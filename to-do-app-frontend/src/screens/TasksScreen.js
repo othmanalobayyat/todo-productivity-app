@@ -10,6 +10,7 @@ import {
 import Icon from "react-native-vector-icons/FontAwesome";
 import Icon5 from "react-native-vector-icons/FontAwesome5";
 import api from "../services/api";
+import { loadCachedTasks, fetchAndCacheTasks, saveTasks } from "../services/taskCache";
 import AppHeader from "../components/AppHeader";
 import TaskItem from "../components/TaskItem";
 import { showToast } from "../components/Toast";
@@ -28,6 +29,23 @@ function SectionHeader({ label, count }) {
   );
 }
 
+// Lightweight skeleton that mirrors the TaskItem card shape without animations.
+// Purple-tinted placeholder blocks (`#ede7f6`) match the app's design language.
+function TaskSkeletonCard() {
+  return (
+    <View style={styles.skeletonCard}>
+      <View style={styles.skeletonRow}>
+        <View style={styles.skeletonCheckbox} />
+        <View style={styles.skeletonBody}>
+          <View style={styles.skeletonTitle} />
+          <View style={styles.skeletonMeta} />
+        </View>
+        <View style={styles.skeletonBadge} />
+      </View>
+    </View>
+  );
+}
+
 export default function TasksScreen({ navigation, userData }) {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,30 +53,58 @@ export default function TasksScreen({ navigation, userData }) {
   const [sort, setSort] = useState("priority"); // 'priority' | 'due_date'
 
   useEffect(() => {
-    fetchTasks(true);
-    const unsubscribe = navigation.addListener("focus", () => fetchTasks(false));
-    return unsubscribe;
-  }, [navigation]);
+    let mounted = true;
 
-  // isInitialLoad=true: show full loading state (first mount or empty list)
-  // isInitialLoad=false: silently refresh in background, keep showing stale data
-  async function fetchTasks(isInitialLoad = false) {
-    if (isInitialLoad) setIsLoading(true);
-    try {
-      const response = await api.get("/tasks");
-      const validTasks = response.data.filter((task) => task.id && task.title);
-      setTasks(validTasks);
-    } catch (error) {
-      if (isInitialLoad) showToast("Unable to fetch tasks");
-    } finally {
-      if (isInitialLoad) setIsLoading(false);
+    async function initialLoad() {
+      // Step 1: Serve cached tasks immediately — avoids blank screen
+      const cached = await loadCachedTasks();
+      if (!mounted) return;
+      if (cached) {
+        setTasks(cached);
+        setIsLoading(false);
+      }
+
+      // Step 2: Fetch fresh data. Deduplication in fetchAndCacheTasks() ensures
+      // only one network request fires even if CalendarScreen or ProfileScreen
+      // also calls this simultaneously during the same tab-switch.
+      try {
+        const fresh = await fetchAndCacheTasks();
+        if (mounted) {
+          setTasks(fresh);
+          setIsLoading(false);
+        }
+      } catch {
+        if (!mounted) return;
+        setIsLoading(false);
+        if (!cached) showToast("Unable to load tasks");
+        // With stale cache: keep it visible — the offline banner provides context.
+      }
     }
-  }
+
+    initialLoad();
+
+    // On tab focus: silently refresh in background; stale data stays visible.
+    const unsubscribe = navigation.addListener("focus", async () => {
+      if (!mounted) return;
+      try {
+        const fresh = await fetchAndCacheTasks();
+        if (mounted) setTasks(fresh);
+      } catch {
+        // Focus refresh failed — current tasks remain visible.
+      }
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [navigation]);
 
   async function toggleTaskComplete(id) {
     const original = tasks.find((t) => t.id === id);
     if (!original) return;
     const nowCompleted = !original.completed;
+    // Optimistic update
     setTasks((prev) =>
       prev.map((t) =>
         t.id === id
@@ -68,8 +114,16 @@ export default function TasksScreen({ navigation, userData }) {
     );
     try {
       const response = await api.patch(`/tasks/${id}/complete`, {});
+      // Spread only the fields the PATCH endpoint returns to preserve
+      // subtasks_total and subtasks_completed (added by GET /tasks, not PATCH).
+      // With the updated backend these fields are now included too, but this
+      // selective spread makes the frontend safe regardless of backend version.
       setTasks((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, ...response.data } : t)),
+        prev.map((t) =>
+          t.id === id
+            ? { ...t, completed: response.data.completed, completed_at: response.data.completed_at }
+            : t,
+        ),
       );
     } catch (error) {
       setTasks((prev) => prev.map((t) => (t.id === id ? original : t)));
@@ -79,9 +133,12 @@ export default function TasksScreen({ navigation, userData }) {
 
   async function deleteTask(id) {
     const prevTasks = tasks;
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    const nextTasks = tasks.filter((t) => t.id !== id);
+    setTasks(nextTasks);
     try {
       await api.delete(`/tasks/${id}`);
+      // Sync the cache immediately so the deleted task never reappears on restart.
+      saveTasks(nextTasks);
     } catch (error) {
       setTasks(prevTasks);
       showToast("Failed to delete task");
@@ -280,7 +337,12 @@ export default function TasksScreen({ navigation, userData }) {
       </View>
 
       {isLoading ? (
-        <Text style={styles.loadingText}>Loading tasks...</Text>
+        <>
+          <TaskSkeletonCard />
+          <TaskSkeletonCard />
+          <TaskSkeletonCard />
+          <TaskSkeletonCard />
+        </>
       ) : tasks.length === 0 ? (
         <EmptyState filtered={false} />
       ) : (
@@ -419,12 +481,6 @@ const styles = StyleSheet.create({
   insightHigh: {
     backgroundColor: "#e67e22",
   },
-  loadingText: {
-    textAlign: "center",
-    fontSize: 16,
-    marginTop: 40,
-    color: "#999",
-  },
   emptyState: {
     alignItems: "center",
     marginTop: 60,
@@ -500,5 +556,52 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: "#bbb",
+  },
+  // ── Skeleton loader ──────────────────────────────────────────────────────────
+  skeletonCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    marginHorizontal: 14,
+    marginVertical: 5,
+    padding: 16,
+    shadowColor: "#451E5D",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  skeletonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  skeletonCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#ede7f6",
+    marginRight: 12,
+  },
+  skeletonBody: {
+    flex: 1,
+  },
+  skeletonTitle: {
+    height: 13,
+    borderRadius: 6,
+    backgroundColor: "#ede7f6",
+    width: "75%",
+    marginBottom: 8,
+  },
+  skeletonMeta: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#f0eaf7",
+    width: "45%",
+  },
+  skeletonBadge: {
+    width: 44,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#f0eaf7",
+    marginLeft: 8,
   },
 });

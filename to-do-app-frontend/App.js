@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Image, View, StyleSheet, StatusBar } from "react-native";
+import { Image, Text, View, StyleSheet, StatusBar } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import * as Linking from "expo-linking";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/FontAwesome";
+import NetInfo from "@react-native-community/netinfo";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import api, { registerLogoutCallback } from "./src/services/api";
-import { AUTH_TOKEN_KEY } from "./src/constants/storage";
+import { AUTH_TOKEN_KEY, USER_PROFILE_KEY } from "./src/constants/storage";
 import { checkForUpdate } from "./src/services/updateService";
 import UpdateModal from "./src/components/UpdateModal";
 
@@ -80,29 +82,95 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
   );
 }
 
+// Compact overlay shown at the top of the screen when the device has no network.
+// pointerEvents="none" so it never intercepts taps on content beneath it.
+function OfflineBanner({ visible }) {
+  const insets = useSafeAreaInsets();
+  if (!visible) return null;
+  return (
+    <View
+      pointerEvents="none"
+      style={[styles.offlineBanner, { paddingTop: insets.top + 6 }]}
+    >
+      <Text style={styles.offlineBannerText}>No internet connection</Text>
+    </View>
+  );
+}
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [updateInfo, setUpdateInfo] = useState(null);
+  const [isOffline, setIsOffline] = useState(false);
+
+  // Subscribe to network state changes for the offline banner.
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(!state.isConnected);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const start = Date.now();
 
+    // Called when a cached profile exists and the app is already showing.
+    // Verifies the token silently; on 401 the api.js interceptor forces logout.
+    // Network/server errors are ignored so the cached session stays alive.
+    function verifyTokenBackground() {
+      api.get("/profile")
+        .then(async (response) => {
+          setUserData(response.data);
+          await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(response.data));
+        })
+        .catch(() => {
+          // 401 → handled by the api.js response interceptor (calls handleLogoutSuccess).
+          // Network error → keep the cached session alive; do nothing here.
+        });
+    }
+
+    // Called when there is no cached profile. Waits for the server before
+    // deciding whether the user is logged in. Any failure shows the login screen;
+    // the api.js interceptor removes the token on 401.
+    async function verifyTokenBlocking() {
+      try {
+        const response = await api.get("/profile");
+        setUserData(response.data);
+        setIsLoggedIn(true);
+        await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(response.data));
+      } catch {
+        setIsLoggedIn(false);
+      }
+    }
+
     async function checkAuthStatus() {
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      if (token) {
-        try {
-          const userResponse = await api.get("/profile");
-          setUserData(userResponse.data);
-          setIsLoggedIn(true);
-        } catch (error) {
-          console.error("Failed to fetch user data.", error);
-          await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-          setIsLoggedIn(false);
-        }
-      } else {
+      if (!token) {
         setIsLoggedIn(false);
+        return;
+      }
+
+      // Try to restore the session from the local cache for an instant startup.
+      let hasCachedProfile = false;
+      try {
+        const cached = await AsyncStorage.getItem(USER_PROFILE_KEY);
+        if (cached) {
+          const user = JSON.parse(cached);
+          setUserData(user);
+          setIsLoggedIn(true);
+          hasCachedProfile = true;
+        }
+      } catch {
+        // Corrupt cache — fall through to the blocking network path.
+      }
+
+      if (hasCachedProfile) {
+        // User sees the app immediately; token is verified in the background.
+        verifyTokenBackground();
+      } else {
+        // No cache — must confirm the token over the network first.
+        await verifyTokenBlocking();
       }
     }
 
@@ -115,6 +183,7 @@ export default function App() {
         .catch(() => {});
 
       await checkAuthStatus();
+
       // Keep splash visible for at least MIN_SPLASH_MS, but no longer.
       const elapsed = Date.now() - start;
       const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
@@ -130,9 +199,14 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     setIsLoggedIn(true);
     setUserData(user);
+    // Cache the profile so future startups don't need to block on the network.
+    AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user)).catch(() => {});
   };
 
-  const handleLogoutSuccess = useCallback(() => {
+  // Called on both manual logout (from ProfileScreen) and automatic 401 logout
+  // (from the api.js interceptor). Always clears the profile cache.
+  const handleLogoutSuccess = useCallback(async () => {
+    await AsyncStorage.removeItem(USER_PROFILE_KEY).catch(() => {});
     setIsLoggedIn(false);
     setUserData(null);
   }, []);
@@ -146,11 +220,9 @@ export default function App() {
 
   const handleProfileUpdate = (updatedUser) => {
     setUserData(updatedUser);
+    // Keep the cache in sync when the user edits their name or email.
+    AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser)).catch(() => {});
   };
-
-  if (isLoading) {
-    return <SplashScreen />;
-  }
 
   const headerOptions = (title) => ({
     title,
@@ -160,100 +232,107 @@ export default function App() {
   });
 
   return (
-    <>
-      <NavigationContainer linking={linking}>
-        <StatusBar backgroundColor="#451E5D" />
-        <Stack.Navigator initialRouteName={isLoggedIn ? "Main" : "Welcome"}>
-          {!isLoggedIn && (
-            <>
+    <SafeAreaProvider>
+      {isLoading ? (
+        <SplashScreen />
+      ) : (
+        <>
+          <NavigationContainer linking={linking}>
+            <StatusBar backgroundColor="#451E5D" />
+            <Stack.Navigator initialRouteName={isLoggedIn ? "Main" : "Welcome"}>
+              {!isLoggedIn && (
+                <>
+                  <Stack.Screen
+                    name="Welcome"
+                    component={WelcomeScreen}
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen name="Login" options={{ headerShown: false }}>
+                    {(props) => (
+                      <LoginScreen {...props} onLoginSuccess={handleLoginSuccess} />
+                    )}
+                  </Stack.Screen>
+                  <Stack.Screen name="Register" options={{ headerShown: false }}>
+                    {(props) => (
+                      <RegisterScreen
+                        {...props}
+                        onRegisterSuccess={handleLoginSuccess}
+                      />
+                    )}
+                  </Stack.Screen>
+                  <Stack.Screen
+                    name="ForgotPassword"
+                    component={ForgotPasswordScreen}
+                    options={{ headerShown: false }}
+                  />
+                </>
+              )}
+              {isLoggedIn && (
+                <>
+                  <Stack.Screen name="Main" options={{ headerShown: false }}>
+                    {() => (
+                      <TabNavigator
+                        userData={userData}
+                        onLogoutSuccess={handleLogoutSuccess}
+                        onProfileUpdate={handleProfileUpdate}
+                      />
+                    )}
+                  </Stack.Screen>
+                  <Stack.Screen
+                    name="CreateTask"
+                    component={CreateTaskScreen}
+                    options={headerOptions("Create Task")}
+                  />
+                  <Stack.Screen
+                    name="EditTask"
+                    component={EditTaskScreen}
+                    options={headerOptions("Edit Task")}
+                  />
+                  <Stack.Screen
+                    name="TaskDetails"
+                    component={TaskDetailsScreen}
+                    options={headerOptions("Task Details")}
+                  />
+                  <Stack.Screen
+                    name="ChangePassword"
+                    component={ChangePasswordScreen}
+                    options={headerOptions("Change Password")}
+                  />
+                  <Stack.Screen
+                    name="EditProfile"
+                    options={headerOptions("Edit Profile")}
+                  >
+                    {(props) => (
+                      <EditProfileScreen
+                        {...props}
+                        onProfileUpdate={handleProfileUpdate}
+                      />
+                    )}
+                  </Stack.Screen>
+                </>
+              )}
+              {/* Always registered so deep links work regardless of auth state */}
               <Stack.Screen
-                name="Welcome"
-                component={WelcomeScreen}
+                name="ResetPassword"
+                component={ResetPasswordScreen}
                 options={{ headerShown: false }}
               />
-              <Stack.Screen name="Login" options={{ headerShown: false }}>
-                {(props) => (
-                  <LoginScreen {...props} onLoginSuccess={handleLoginSuccess} />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Register" options={{ headerShown: false }}>
-                {(props) => (
-                  <RegisterScreen
-                    {...props}
-                    onRegisterSuccess={handleLoginSuccess}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen
-                name="ForgotPassword"
-                component={ForgotPasswordScreen}
-                options={{ headerShown: false }}
-              />
-            </>
-          )}
-          {isLoggedIn && (
-            <>
-              <Stack.Screen name="Main" options={{ headerShown: false }}>
-                {() => (
-                  <TabNavigator
-                    userData={userData}
-                    onLogoutSuccess={handleLogoutSuccess}
-                    onProfileUpdate={handleProfileUpdate}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen
-                name="CreateTask"
-                component={CreateTaskScreen}
-                options={headerOptions("Create Task")}
-              />
-              <Stack.Screen
-                name="EditTask"
-                component={EditTaskScreen}
-                options={headerOptions("Edit Task")}
-              />
-              <Stack.Screen
-                name="TaskDetails"
-                component={TaskDetailsScreen}
-                options={headerOptions("Task Details")}
-              />
-              <Stack.Screen
-                name="ChangePassword"
-                component={ChangePasswordScreen}
-                options={headerOptions("Change Password")}
-              />
-              <Stack.Screen
-                name="EditProfile"
-                options={headerOptions("Edit Profile")}
-              >
-                {(props) => (
-                  <EditProfileScreen
-                    {...props}
-                    onProfileUpdate={handleProfileUpdate}
-                  />
-                )}
-              </Stack.Screen>
-            </>
-          )}
-          {/* Always registered so deep links work regardless of auth state */}
-          <Stack.Screen
-            name="ResetPassword"
-            component={ResetPasswordScreen}
-            options={{ headerShown: false }}
+            </Stack.Navigator>
+          </NavigationContainer>
+          <UpdateModal
+            visible={updateInfo !== null}
+            info={updateInfo}
+            onUpdate={() => {
+              Linking.openURL(updateInfo.downloadUrl);
+              setUpdateInfo(null);
+            }}
+            onLater={() => setUpdateInfo(null)}
           />
-        </Stack.Navigator>
-      </NavigationContainer>
-      <UpdateModal
-        visible={updateInfo !== null}
-        info={updateInfo}
-        onUpdate={() => {
-          Linking.openURL(updateInfo.downloadUrl);
-          setUpdateInfo(null);
-        }}
-        onLater={() => setUpdateInfo(null)}
-      />
-      <Toast ref={toastRef} />
-    </>
+          <Toast ref={toastRef} />
+          <OfflineBanner visible={isOffline} />
+        </>
+      )}
+    </SafeAreaProvider>
   );
 }
 
@@ -267,5 +346,22 @@ const styles = StyleSheet.create({
   logo: {
     width: 150,
     height: 200,
+  },
+  offlineBanner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#2d2d2d",
+    alignItems: "center",
+    paddingBottom: 10,
+    zIndex: 9998,
+    elevation: 9,
+  },
+  offlineBannerText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
 });

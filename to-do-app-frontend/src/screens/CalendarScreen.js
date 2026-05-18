@@ -9,13 +9,11 @@ import {
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { useFocusEffect } from "@react-navigation/native";
-import api from "../services/api";
+import { loadCachedTasks, fetchAndCacheTasks } from "../services/taskCache";
 import { getMarkedDates, getTasksForDate } from "../utils/calendarUtils";
 import { getTodayString } from "../utils/dateUtils";
 import AppHeader from "../components/AppHeader";
 import { PRIORITY_COLORS } from "../constants/priorities";
-
-const today = getTodayString();
 
 function formatDisplayDate(dateString) {
   const [year, month, day] = dateString.split("-").map(Number);
@@ -27,25 +25,50 @@ function formatDisplayDate(dateString) {
 }
 
 export default function CalendarScreen({ navigation }) {
+  // Computed inside the component so it refreshes correctly after midnight
+  // (the module-level constant only evaluated once at import time).
+  const today = getTodayString();
+
   const [tasks, setTasks] = useState([]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [loading, setLoading] = useState(true);
-
-  const fetchTasks = useCallback(async () => {
-    try {
-      const res = await api.get("/tasks");
-      setTasks(res.data ?? []);
-    } catch {
-      // silent — UI shows empty state
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [fetchError, setFetchError] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      fetchTasks();
-    }, [fetchTasks]),
+      let mounted = true;
+
+      async function loadAndRefresh() {
+        // Step 1: Show cached tasks immediately — no blank calendar
+        const cached = await loadCachedTasks();
+        if (!mounted) return;
+        if (cached) {
+          setTasks(cached);
+          setLoading(false);
+          setFetchError(false);
+        }
+
+        // Step 2: Fetch fresh data. Deduplication prevents a redundant request
+        // if TasksScreen or ProfileScreen is already fetching simultaneously.
+        try {
+          const fresh = await fetchAndCacheTasks();
+          if (!mounted) return;
+          setTasks(fresh);
+          setLoading(false);
+          setFetchError(false);
+        } catch {
+          if (!mounted) return;
+          setLoading(false);
+          // Only show the error state when there is nothing cached to display.
+          // If stale cache is showing, the offline banner covers the context.
+          if (!cached) setFetchError(true);
+        }
+      }
+
+      loadAndRefresh();
+
+      return () => { mounted = false; };
+    }, []),
   );
 
   const markedDates = getMarkedDates(tasks, selectedDate, today);
@@ -125,6 +148,13 @@ export default function CalendarScreen({ navigation }) {
 
       {loading ? (
         <ActivityIndicator size="small" color="#451E5D" style={styles.loader} />
+      ) : fetchError ? (
+        <View style={styles.errorState}>
+          <Text style={styles.errorStateText}>Could not load tasks</Text>
+          <Text style={styles.errorStateSub}>
+            Check your connection and try again.
+          </Text>
+        </View>
       ) : dayTasks.length === 0 ? (
         <Text style={styles.emptyText}>No tasks for this day.</Text>
       ) : (
@@ -216,5 +246,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#27ae60",
+  },
+  errorState: {
+    alignItems: "center",
+    marginTop: 40,
+    paddingHorizontal: 40,
+  },
+  errorStateText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#555",
+    marginBottom: 6,
+  },
+  errorStateSub: {
+    fontSize: 13,
+    color: "#aaa",
+    textAlign: "center",
   },
 });

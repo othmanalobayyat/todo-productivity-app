@@ -131,8 +131,17 @@ router.patch("/tasks/:id/complete", authMiddleware, async function (req, res) {
         completed: nowCompleting,
         completed_at: nowCompleting ? new Date() : null,
       },
+      include: {
+        _count: { select: { subtasks: true } },
+        subtasks: { where: { completed: true }, select: { id: true } },
+      },
     });
-    res.json(updated);
+    var { _count, subtasks: completedSubs, ...taskFields } = updated;
+    res.json({
+      ...taskFields,
+      subtasks_total: _count.subtasks,
+      subtasks_completed: completedSubs.length,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error updating task" });
   }

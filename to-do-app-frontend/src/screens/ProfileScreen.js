@@ -17,6 +17,7 @@ import AppHeader from '../components/AppHeader';
 import api, { clearCachedToken } from '../services/api';
 import { AUTH_TOKEN_KEY } from '../constants/storage';
 import { calculateStreak } from '../utils/streakUtils';
+import { loadCachedTasks, fetchAndCacheTasks } from '../services/taskCache';
 
 const ACHIEVEMENTS = [
   { id: 'focused_week',  label: 'Focused Week',       icon: 'star',     threshold: (c) => c.completed >= 7  },
@@ -30,17 +31,28 @@ export default function ProfileScreen({ navigation, userData, onLogoutSuccess })
   const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
-    fetchTasks();
-    const unsubscribe = navigation.addListener('focus', fetchTasks);
-    return unsubscribe;
-  }, [navigation]);
+    let mounted = true;
 
-  async function fetchTasks() {
-    try {
-      const response = await api.get('/tasks');
-      setTasks(response.data.filter((t) => t.id && t.title));
-    } catch (_) {}
-  }
+    async function loadTasks() {
+      // Load from cache immediately so stats are never blank for returning users.
+      const cached = await loadCachedTasks();
+      if (mounted && cached) setTasks(cached);
+
+      try {
+        const fresh = await fetchAndCacheTasks();
+        if (mounted) setTasks(fresh);
+      } catch {
+        // Network failure — keep cached data; stats remain accurate.
+      }
+    }
+
+    loadTasks();
+    const unsubscribe = navigation.addListener('focus', loadTasks);
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [navigation]);
 
   const handleLogout = async () => {
     try {
