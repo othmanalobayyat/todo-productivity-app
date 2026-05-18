@@ -15,6 +15,10 @@ import { showToast } from '../components/Toast';
 import { Picker } from '@react-native-picker/picker';
 import DatePickerField from '../components/DatePickerField';
 import { formatLocalDate } from '../utils/dateUtils';
+import { loadCachedTasks, saveTasks } from '../services/taskCache';
+import { enqueueOperation } from '../services/writeQueue';
+import { triggerTaskRefresh } from '../services/taskEvents';
+import { checkIsOffline } from '../utils/networkUtils';
 
 export default function CreateTaskScreen({ navigation }) {
   const [title, setTitle]             = useState('');
@@ -44,16 +48,45 @@ export default function CreateTaskScreen({ navigation }) {
       return;
     }
 
+    const taskData = {
+      title:       title.trim(),
+      description,
+      due_date:    formatLocalDate(dueDate),
+      category_id: category || null,
+      priority,
+    };
+
+    const offline = await checkIsOffline();
+
+    if (offline) {
+      const localId = `offline-${Date.now()}`;
+      const offlineTask = {
+        id: localId,
+        ...taskData,
+        completed: false,
+        completed_at: null,
+        subtasks_total: 0,
+        subtasks_completed: 0,
+        pending_sync: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const cached = await loadCachedTasks();
+      await saveTasks(cached ? [...cached, offlineTask] : [offlineTask]);
+      await enqueueOperation('create', { localId, taskData });
+
+      // Notify TasksScreen to reload from cache so the new task appears immediately.
+      triggerTaskRefresh();
+
+      showToast('Saved offline. Will sync when connected.', 'success');
+      navigation.goBack();
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await api.post('/tasks', {
-        title:       title.trim(),
-        description,
-        due_date:    formatLocalDate(dueDate),
-        category_id: category || null,   // empty string → null for nullable field
-        priority,
-      });
-
+      await api.post('/tasks', taskData);
       showToast('Task created successfully', 'success');
       navigation.goBack();
     } catch (error) {

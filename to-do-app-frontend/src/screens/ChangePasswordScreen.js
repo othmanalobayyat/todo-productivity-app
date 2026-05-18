@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { changePassword } from '../services/authService';
 import { showToast } from '../components/Toast';
+import { checkIsOffline } from '../utils/networkUtils';
 
 export default function ChangePasswordScreen({ navigation }) {
   const [currentPassword, setCurrent]   = useState('');
@@ -37,6 +38,12 @@ export default function ChangePasswordScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+
+    if (await checkIsOffline()) {
+      showToast('This action requires an internet connection');
+      return;
+    }
+
     setLoading(true);
     try {
       await changePassword(currentPassword, newPassword);

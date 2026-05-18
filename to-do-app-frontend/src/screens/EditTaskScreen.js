@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import api from '../services/api';
 import { showToast } from '../components/Toast';
+import { checkIsOffline } from '../utils/networkUtils';
 import { Picker } from '@react-native-picker/picker';
 import DatePickerField from '../components/DatePickerField';
 import { formatLocalDate } from '../utils/dateUtils';
@@ -70,6 +71,11 @@ export default function EditTaskScreen({ route, navigation }) {
   const handleSave = async () => {
     if (!task.title.trim()) {
       showToast('Title is required.');
+      return;
+    }
+
+    if (await checkIsOffline()) {
+      showToast('This action requires an internet connection');
       return;
     }
 

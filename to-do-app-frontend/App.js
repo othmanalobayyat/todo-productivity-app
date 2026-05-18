@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Image, Text, View, StyleSheet, StatusBar } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import * as Linking from "expo-linking";
@@ -26,7 +26,10 @@ import EditTaskScreen from "./src/screens/EditTaskScreen";
 import TaskDetailsScreen from "./src/screens/TaskDetailsScreen";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CalendarScreen from "./src/screens/CalendarScreen";
-import Toast, { toastRef } from "./src/components/Toast";
+import Toast, { toastRef, showToast } from "./src/components/Toast";
+import { drainQueue, loadQueue, clearQueue } from "./src/services/writeQueue";
+import { loadCachedTasks, saveTasks, fetchAndCacheTasks } from "./src/services/taskCache";
+import { triggerTaskRefresh } from "./src/services/taskEvents";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -104,10 +107,55 @@ export default function App() {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [isOffline, setIsOffline] = useState(false);
 
-  // Subscribe to network state changes for the offline banner.
+  // Subscribe to network state changes.
+  // Tracks the previous connection value so we can detect the offline→online
+  // transition and drain any queued offline writes.
+  const wasConnected = useRef(null);
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsOffline(!state.isConnected);
+    const unsubscribe = NetInfo.addEventListener(async (state) => {
+      const isConnected = !!state.isConnected;
+      setIsOffline(!isConnected);
+
+      if (wasConnected.current === false && isConnected) {
+        // Just came back online — drain the write queue if it has anything.
+        const queue = await loadQueue();
+        if (queue.length > 0) {
+          showToast('Syncing offline changes...', 'success');
+
+          const { success } = await drainQueue(async (op, result) => {
+            // For offline creates: replace the local placeholder in the cache
+            // with the real server task before the full refresh fires.
+            if (op.type === 'create' && result?.serverTask) {
+              const cached = await loadCachedTasks();
+              if (cached) {
+                await saveTasks(
+                  cached.map((t) =>
+                    t.id === result.localId
+                      ? { ...result.serverTask }
+                      : t,
+                  ),
+                );
+              }
+            }
+          });
+
+          // Fetch a clean server snapshot regardless of drain outcome.
+          try {
+            await fetchAndCacheTasks();
+          } catch {}
+
+          // Tell TasksScreen to re-render with the refreshed data.
+          triggerTaskRefresh();
+
+          if (success) {
+            showToast('Offline changes synced', 'success');
+          } else {
+            showToast('Some changes could not be synced');
+          }
+        }
+      }
+
+      wasConnected.current = isConnected;
     });
     return unsubscribe;
   }, []);
@@ -204,9 +252,11 @@ export default function App() {
   };
 
   // Called on both manual logout (from ProfileScreen) and automatic 401 logout
-  // (from the api.js interceptor). Always clears the profile cache.
+  // (from the api.js interceptor). Clears the profile cache and any pending
+  // offline operations that belong to this session.
   const handleLogoutSuccess = useCallback(async () => {
     await AsyncStorage.removeItem(USER_PROFILE_KEY).catch(() => {});
+    await clearQueue();
     setIsLoggedIn(false);
     setUserData(null);
   }, []);

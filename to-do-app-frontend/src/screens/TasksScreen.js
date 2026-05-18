@@ -11,6 +11,9 @@ import Icon from "react-native-vector-icons/FontAwesome";
 import Icon5 from "react-native-vector-icons/FontAwesome5";
 import api from "../services/api";
 import { loadCachedTasks, fetchAndCacheTasks, saveTasks } from "../services/taskCache";
+import { enqueueOperation } from "../services/writeQueue";
+import { registerTaskRefreshHandler, unregisterTaskRefreshHandler } from "../services/taskEvents";
+import { checkIsOffline } from "../utils/networkUtils";
 import AppHeader from "../components/AppHeader";
 import TaskItem from "../components/TaskItem";
 import { showToast } from "../components/Toast";
@@ -55,48 +58,57 @@ export default function TasksScreen({ navigation, userData }) {
   useEffect(() => {
     let mounted = true;
 
-    async function initialLoad() {
-      // Step 1: Serve cached tasks immediately — avoids blank screen
+    async function loadFromCacheThenServer() {
+      // Always load from cache first so offline/pending tasks are visible immediately.
       const cached = await loadCachedTasks();
       if (!mounted) return;
-      if (cached) {
-        setTasks(cached);
-        setIsLoading(false);
-      }
+      if (cached) setTasks(cached);
 
-      // Step 2: Fetch fresh data. Deduplication in fetchAndCacheTasks() ensures
-      // only one network request fires even if CalendarScreen or ProfileScreen
-      // also calls this simultaneously during the same tab-switch.
       try {
         const fresh = await fetchAndCacheTasks();
-        if (mounted) {
-          setTasks(fresh);
-          setIsLoading(false);
-        }
+        if (mounted) setTasks(fresh);
       } catch {
         if (!mounted) return;
-        setIsLoading(false);
+        // Network failed — cached data (including any pending_sync tasks) stays visible.
         if (!cached) showToast("Unable to load tasks");
-        // With stale cache: keep it visible — the offline banner provides context.
       }
+    }
+
+    async function initialLoad() {
+      await loadFromCacheThenServer();
+      if (mounted) setIsLoading(false);
     }
 
     initialLoad();
 
-    // On tab focus: silently refresh in background; stale data stays visible.
+    // On tab focus: refresh, showing cache immediately if the network call fails.
     const unsubscribe = navigation.addListener("focus", async () => {
       if (!mounted) return;
       try {
         const fresh = await fetchAndCacheTasks();
         if (mounted) setTasks(fresh);
       } catch {
-        // Focus refresh failed — current tasks remain visible.
+        // If fetch fails (e.g. offline), reload from cache so pending tasks are visible.
+        const cached = await loadCachedTasks();
+        if (cached && mounted) setTasks(cached);
       }
+    });
+
+    // Called by App.js via triggerTaskRefresh() after the write queue drains.
+    registerTaskRefreshHandler(async () => {
+      if (!mounted) return;
+      const cached = await loadCachedTasks();
+      if (cached && mounted) setTasks(cached);
+      try {
+        const fresh = await fetchAndCacheTasks();
+        if (mounted) setTasks(fresh);
+      } catch {}
     });
 
     return () => {
       mounted = false;
       unsubscribe();
+      unregisterTaskRefreshHandler();
     };
   }, [navigation]);
 
@@ -104,20 +116,35 @@ export default function TasksScreen({ navigation, userData }) {
     const original = tasks.find((t) => t.id === id);
     if (!original) return;
     const nowCompleted = !original.completed;
-    // Optimistic update
+    const updatedAt = nowCompleted ? new Date().toISOString() : null;
+
+    // Optimistic update — applies immediately regardless of connectivity.
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === id
-          ? { ...t, completed: nowCompleted, completed_at: nowCompleted ? new Date().toISOString() : null }
-          : t,
+        t.id === id ? { ...t, completed: nowCompleted, completed_at: updatedAt } : t,
       ),
     );
+
+    const offline = await checkIsOffline();
+
+    if (offline) {
+      // Enqueue the toggle (duplicate toggles cancel each other in the queue).
+      await enqueueOperation('toggle', { taskId: id, completed: nowCompleted });
+      // Persist the optimistic state to cache so it survives a restart.
+      const cached = await loadCachedTasks();
+      if (cached) {
+        saveTasks(
+          cached.map((t) =>
+            t.id === id ? { ...t, completed: nowCompleted, completed_at: updatedAt } : t,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Online path — sync immediately with selective spread to preserve subtask counts.
     try {
       const response = await api.patch(`/tasks/${id}/complete`, {});
-      // Spread only the fields the PATCH endpoint returns to preserve
-      // subtasks_total and subtasks_completed (added by GET /tasks, not PATCH).
-      // With the updated backend these fields are now included too, but this
-      // selective spread makes the frontend safe regardless of backend version.
       setTasks((prev) =>
         prev.map((t) =>
           t.id === id
@@ -134,10 +161,23 @@ export default function TasksScreen({ navigation, userData }) {
   async function deleteTask(id) {
     const prevTasks = tasks;
     const nextTasks = tasks.filter((t) => t.id !== id);
+
+    // Optimistic removal — applies immediately.
     setTasks(nextTasks);
+
+    const offline = await checkIsOffline();
+
+    if (offline) {
+      // enqueueOperation handles the offline-only task case (returns 'skip')
+      // and removes any pending toggle for this task automatically.
+      await enqueueOperation('delete', { taskId: id });
+      saveTasks(nextTasks);
+      return;
+    }
+
+    // Online path.
     try {
       await api.delete(`/tasks/${id}`);
-      // Sync the cache immediately so the deleted task never reappears on restart.
       saveTasks(nextTasks);
     } catch (error) {
       setTasks(prevTasks);

@@ -100,6 +100,12 @@ export default function TaskItem({ item, today, isCompleting, onToggle, onDetail
             <Text style={styles.statusText}>Today</Text>
           </View>
         )}
+        {!!item.pending_sync && (
+          <View style={styles.pendingSyncBadge}>
+            <Icon name="clock-o" size={10} color="#9c6fb5" />
+            <Text style={styles.pendingSyncText}>Pending</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
 
@@ -236,5 +242,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#451E5D',
+  },
+  pendingSyncBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#f3eef8',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#ddd3ea',
+  },
+  pendingSyncText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9c6fb5',
   },
 });

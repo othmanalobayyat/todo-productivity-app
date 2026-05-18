@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import api from '../services/api';
 import { showToast } from '../components/Toast';
+import { checkIsOffline } from '../utils/networkUtils';
 
 export default function EditProfileScreen({ route, navigation, onProfileUpdate }) {
   const { userData } = route.params;
@@ -27,9 +28,13 @@ export default function EditProfileScreen({ route, navigation, onProfileUpdate }
       return;
     }
 
-    // Basic email format check before hitting the server.
     if (!/\S+@\S+\.\S+/.test(trimmedEmail)) {
       showToast('Please enter a valid email address.');
+      return;
+    }
+
+    if (await checkIsOffline()) {
+      showToast('This action requires an internet connection');
       return;
     }
 
