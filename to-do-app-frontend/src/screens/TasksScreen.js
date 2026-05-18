@@ -22,11 +22,11 @@ import { getTodayString } from "../utils/dateUtils";
 import { getInsights, getInsightMessage } from "../utils/insightsUtils";
 import { calculateStreak } from "../utils/streakUtils";
 
-function SectionHeader({ label, count }) {
+function SectionHeader({ label, count, overdue }) {
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionLabel}>{label}</Text>
-      <View style={styles.sectionLine} />
+      <Text style={[styles.sectionLabel, overdue && styles.sectionLabelOverdue]}>{label}</Text>
+      <View style={[styles.sectionLine, overdue && styles.sectionLineOverdue]} />
       <Text style={styles.sectionCount}>{count}</Text>
     </View>
   );
@@ -54,6 +54,7 @@ export default function TasksScreen({ navigation, userData }) {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // 'all' | 'completed' | 'pending'
   const [sort, setSort] = useState("priority"); // 'priority' | 'due_date'
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -219,17 +220,28 @@ export default function TasksScreen({ navigation, userData }) {
 
     if (filter !== "all") return sorted;
 
-    const pendingItems = sorted.filter((t) => !t.completed);
+    const overdueItems = sorted.filter((t) => !t.completed && t.due_date && t.due_date < today);
+    const pendingItems = sorted.filter((t) => !t.completed && !(t.due_date && t.due_date < today));
     const completedItems = sorted.filter((t) => t.completed);
     const data = [];
 
+    if (overdueItems.length > 0) {
+      data.push({ _type: "header", _key: "header-overdue", label: "OVERDUE", count: overdueItems.length, _overdue: true });
+      overdueItems.forEach((t) => data.push(t));
+    }
     if (pendingItems.length > 0) {
       data.push({ _type: "header", _key: "header-pending", label: "PENDING", count: pendingItems.length });
       pendingItems.forEach((t) => data.push(t));
     }
     if (completedItems.length > 0) {
-      data.push({ _type: "header", _key: "header-completed", label: "COMPLETED", count: completedItems.length });
-      completedItems.forEach((t) => data.push(t));
+      data.push({
+        _type: "completed-toggle",
+        _key: "completed-toggle",
+        count: completedItems.length,
+      });
+      if (showCompleted) {
+        completedItems.forEach((t) => data.push(t));
+      }
     }
 
     return data;
@@ -251,7 +263,26 @@ export default function TasksScreen({ navigation, userData }) {
 
   const renderItem = ({ item }) => {
     if (item._type === "header") {
-      return <SectionHeader label={item.label} count={item.count} />;
+      return <SectionHeader label={item.label} count={item.count} overdue={item._overdue} />;
+    }
+    if (item._type === "completed-toggle") {
+      return (
+        <TouchableOpacity
+          style={styles.completedToggleRow}
+          onPress={() => setShowCompleted((v) => !v)}
+          activeOpacity={0.7}
+        >
+          <Icon
+            name={showCompleted ? "chevron-up" : "chevron-down"}
+            size={11}
+            color="#999"
+            style={styles.completedToggleIcon}
+          />
+          <Text style={styles.completedToggleText}>
+            {showCompleted ? "Hide completed" : `Show ${item.count} completed`}
+          </Text>
+        </TouchableOpacity>
+      );
     }
     return (
       <TaskItem
@@ -643,5 +674,29 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "#f0eaf7",
     marginLeft: 8,
+  },
+  sectionLabelOverdue: {
+    color: "#c0392b",
+  },
+  sectionLineOverdue: {
+    backgroundColor: "#f5c6c2",
+  },
+  completedToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 18,
+    marginBottom: 4,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  completedToggleIcon: {
+    marginTop: 1,
+  },
+  completedToggleText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#999",
+    letterSpacing: 0.3,
   },
 });
