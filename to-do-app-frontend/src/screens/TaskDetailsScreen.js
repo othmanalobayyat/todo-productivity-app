@@ -14,6 +14,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { showToast } from '../components/Toast';
 import api from '../services/api';
+import { checkIsOffline } from '../utils/networkUtils';
+import { enqueueOperation } from '../services/writeQueue';
+import { loadCachedTasks, saveTasks } from '../services/taskCache';
 
 export default function TaskDetailsScreen({ route }) {
   const taskId = route.params.task.id;
@@ -85,10 +88,39 @@ export default function TaskDetailsScreen({ route }) {
   }
 
   async function handleToggleTask() {
+    const original = task;
+    const nowCompleted = !task.completed;
+    const updatedAt = nowCompleted ? new Date().toISOString() : null;
+
+    // Optimistic update — renders immediately regardless of connectivity.
+    setTask((prev) => ({ ...prev, completed: nowCompleted, completed_at: updatedAt }));
+
+    const offline = await checkIsOffline();
+
+    if (offline) {
+      await enqueueOperation('toggle', { taskId, completed: nowCompleted });
+      // Patch the shared task cache so TasksScreen reflects this change on return.
+      const cached = await loadCachedTasks();
+      if (cached) {
+        saveTasks(
+          cached.map((t) =>
+            t.id === taskId ? { ...t, completed: nowCompleted, completed_at: updatedAt } : t,
+          ),
+        );
+      }
+      return;
+    }
+
     try {
-      await api.patch(`/tasks/${taskId}/complete`);
-      await fetchTask();
+      const response = await api.patch(`/tasks/${taskId}/complete`, {});
+      // Confirm with server values rather than keeping the local guess.
+      setTask((prev) => ({
+        ...prev,
+        completed: response.data.completed,
+        completed_at: response.data.completed_at,
+      }));
     } catch {
+      setTask(original);
       showToast('Failed to update task');
     }
   }
