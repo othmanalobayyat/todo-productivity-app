@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { checkIsOffline } from '../utils/networkUtils';
 import { enqueueOperation } from '../services/writeQueue';
 import { loadCachedTasks, saveTasks } from '../services/taskCache';
 
-export default function TaskDetailsScreen({ route }) {
+export default function TaskDetailsScreen({ route, navigation }) {
   const taskId = route.params.task.id;
 
   const [task, setTask] = useState(route.params.task);
@@ -124,6 +124,70 @@ export default function TaskDetailsScreen({ route }) {
       showToast('Failed to update task');
     }
   }
+
+  async function handleDeleteTask() {
+    const cached = await loadCachedTasks();
+    const nextCache = cached ? cached.filter((t) => t.id !== taskId) : null;
+
+    // Optimistic: update cache and navigate back immediately.
+    if (nextCache) saveTasks(nextCache);
+    navigation.goBack();
+
+    const offline = await checkIsOffline();
+
+    if (offline) {
+      await enqueueOperation('delete', { taskId });
+      return;
+    }
+
+    try {
+      await api.delete(`/tasks/${taskId}`);
+    } catch {
+      // Restore cache so the task reappears when TasksScreen refetches on focus.
+      if (cached) saveTasks(cached);
+      showToast('Failed to delete task');
+    }
+  }
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('EditTask', { taskId })}
+            style={styles.headerBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Icon name="pencil" size={17} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert('', '', [
+                {
+                  text: 'Delete Task',
+                  style: 'destructive',
+                  onPress: () =>
+                    Alert.alert(
+                      'Delete Task',
+                      'This action cannot be undone.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Delete', style: 'destructive', onPress: handleDeleteTask },
+                      ],
+                    ),
+                },
+                { text: 'Cancel', style: 'cancel' },
+              ])
+            }
+            style={styles.headerBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Icon name="ellipsis-v" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, taskId]);
 
   function handleDelete(subtaskId) {
     Alert.alert(
@@ -455,5 +519,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginRight: 8,
+  },
+  headerBtn: {
+    padding: 6,
   },
 });
