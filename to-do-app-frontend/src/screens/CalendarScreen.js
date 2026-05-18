@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import Svg, { Circle } from "react-native-svg";
 import { Calendar } from "react-native-calendars";
 import { useFocusEffect } from "@react-navigation/native";
 import { loadCachedTasks, fetchAndCacheTasks } from "../services/taskCache";
@@ -14,6 +15,14 @@ import { getMarkedDates, getTasksForDate } from "../utils/calendarUtils";
 import { getTodayString } from "../utils/dateUtils";
 import AppHeader from "../components/AppHeader";
 import { PRIORITY_COLORS } from "../constants/priorities";
+
+// ─── Day summary visual mode ──────────────────────────────────────────────────
+// Change this value to switch between card styles.
+// 'simple'  → lightweight stats row + progress bar
+// 'premium' → SVG progress ring with hero completion count
+const DAY_SUMMARY_STYLE = "simple"; // 'simple' | 'premium'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDisplayDate(dateString) {
   const [year, month, day] = dateString.split("-").map(Number);
@@ -24,9 +33,209 @@ function formatDisplayDate(dateString) {
   });
 }
 
+// Computes all day-level stats from a task array.
+// Called once in DaySummaryCard and passed as a prop to both card variants.
+function computeStats(tasks) {
+  const total = tasks.length;
+  const completed = tasks.filter((t) => t.completed).length;
+  const pending = total - completed;
+  const progress = total > 0 ? completed / total : 0;
+  const pct = Math.round(progress * 100);
+  const allDone = pending === 0;
+  return { total, completed, pending, progress, pct, allDone };
+}
+
+// ─── Simple summary card ──────────────────────────────────────────────────────
+
+const S_RING_SIZE = 48;
+const S_RING_STROKE = 5;
+const S_RING_R = (S_RING_SIZE - S_RING_STROKE) / 2;
+const S_RING_CIRC = 2 * Math.PI * S_RING_R;
+
+function SimpleRing({ progress }) {
+  const clamped = Math.min(1, Math.max(0, progress));
+  const offset = S_RING_CIRC * (1 - clamped);
+  const pct = Math.round(clamped * 100);
+  const allDone = clamped >= 1;
+  const arcColor = allDone ? "#4caf7d" : "#451E5D";
+
+  return (
+    <View style={styles.simpleRingWrap}>
+      <Svg
+        width={S_RING_SIZE}
+        height={S_RING_SIZE}
+        style={[StyleSheet.absoluteFill, { transform: [{ rotate: "-90deg" }] }]}
+      >
+        <Circle
+          cx={S_RING_SIZE / 2}
+          cy={S_RING_SIZE / 2}
+          r={S_RING_R}
+          stroke="#ede8f5"
+          strokeWidth={S_RING_STROKE}
+          fill="none"
+        />
+        {clamped > 0 && (
+          <Circle
+            cx={S_RING_SIZE / 2}
+            cy={S_RING_SIZE / 2}
+            r={S_RING_R}
+            stroke={arcColor}
+            strokeWidth={S_RING_STROKE}
+            fill="none"
+            strokeDasharray={S_RING_CIRC}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+          />
+        )}
+      </Svg>
+      <Text style={[styles.simpleRingNum, allDone && styles.simpleRingNumDone]}>
+        {pct}
+      </Text>
+      <Text style={[styles.simpleRingSign, allDone && styles.simpleRingSignDone]}>
+        %
+      </Text>
+    </View>
+  );
+}
+
+function SimpleDaySummaryCard({ stats }) {
+  const { total, completed, pending, progress, allDone } = stats;
+
+  const statusLine = allDone
+    ? `All ${total} complete`
+    : `${pending} remaining`;
+
+  return (
+    <View style={styles.simpleCard}>
+      <SimpleRing progress={progress} />
+      <View style={styles.simpleBody}>
+        <View style={styles.simpleStatsRow}>
+          <View style={styles.simpleStatItem}>
+            <Text style={styles.simpleStatNum}>{completed}</Text>
+            <Text style={styles.simpleStatLbl}>done</Text>
+          </View>
+          <View style={styles.simpleStatDivider} />
+          <View style={styles.simpleStatItem}>
+            <Text style={styles.simpleStatNum}>{pending}</Text>
+            <Text style={styles.simpleStatLbl}>left</Text>
+          </View>
+          <View style={styles.simpleStatDivider} />
+          <View style={styles.simpleStatItem}>
+            <Text style={styles.simpleStatNum}>{total}</Text>
+            <Text style={styles.simpleStatLbl}>total</Text>
+          </View>
+        </View>
+        <Text style={[styles.simpleStatusLine, allDone && styles.simpleStatusLineDone]}>
+          {statusLine}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Premium summary card ─────────────────────────────────────────────────────
+
+const RING_SIZE = 64;
+const RING_STROKE = 5;
+const RING_R = (RING_SIZE - RING_STROKE) / 2;
+const RING_CIRC = 2 * Math.PI * RING_R;
+
+function ProgressRing({ progress }) {
+  const clamped = Math.min(1, Math.max(0, progress));
+  const offset = RING_CIRC * (1 - clamped);
+  const pct = Math.round(clamped * 100);
+  const allDone = clamped >= 1;
+  const arcColor = allDone ? "#4caf7d" : "#451E5D";
+
+  return (
+    <View style={styles.ringContainer}>
+      <Svg
+        width={RING_SIZE}
+        height={RING_SIZE}
+        style={[StyleSheet.absoluteFill, { transform: [{ rotate: "-90deg" }] }]}
+      >
+        <Circle
+          cx={RING_SIZE / 2}
+          cy={RING_SIZE / 2}
+          r={RING_R}
+          stroke="#ede8f5"
+          strokeWidth={RING_STROKE}
+          fill="none"
+        />
+        {clamped > 0 && (
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={RING_R}
+            stroke={arcColor}
+            strokeWidth={RING_STROKE}
+            fill="none"
+            strokeDasharray={RING_CIRC}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+          />
+        )}
+      </Svg>
+      <Text style={[styles.ringNum, allDone && styles.ringNumDone]}>{pct}</Text>
+      <Text style={[styles.ringSign, allDone && styles.ringSignDone]}>%</Text>
+    </View>
+  );
+}
+
+function PremiumDaySummaryCard({ stats }) {
+  const { completed, pending, total, progress, allDone } = stats;
+
+  const detailText = allDone
+    ? `All ${total} complete`
+    : `${total} total  ·  ${pending} remaining`;
+
+  return (
+    <View style={styles.premiumCard}>
+      <ProgressRing progress={progress} />
+
+      <View style={styles.premiumBody}>
+        <View style={styles.premiumHeroRow}>
+          <Text
+            style={[
+              styles.premiumHeroNum,
+              allDone && styles.premiumHeroNumDone,
+            ]}
+          >
+            {completed}
+          </Text>
+          <Text style={styles.premiumHeroLabel}> done</Text>
+        </View>
+        <Text style={styles.premiumDetail}>{detailText}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Day summary card (mode router) ──────────────────────────────────────────
+// Handles the empty state centrally, computes stats once, then delegates
+// to whichever card variant is active via DAY_SUMMARY_STYLE.
+
+function DaySummaryCard({ tasks }) {
+  if (tasks.length === 0) {
+    return (
+      <View style={styles.cardEmpty}>
+        <Text style={styles.cardEmptyText}>No tasks scheduled</Text>
+      </View>
+    );
+  }
+
+  const stats = computeStats(tasks);
+
+  return DAY_SUMMARY_STYLE === "premium" ? (
+    <PremiumDaySummaryCard stats={stats} />
+  ) : (
+    <SimpleDaySummaryCard stats={stats} />
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 export default function CalendarScreen({ navigation }) {
-  // Computed inside the component so it refreshes correctly after midnight
-  // (the module-level constant only evaluated once at import time).
   const today = getTodayString();
 
   const [tasks, setTasks] = useState([]);
@@ -39,7 +248,6 @@ export default function CalendarScreen({ navigation }) {
       let mounted = true;
 
       async function loadAndRefresh() {
-        // Step 1: Show cached tasks immediately — no blank calendar
         const cached = await loadCachedTasks();
         if (!mounted) return;
         if (cached) {
@@ -48,8 +256,6 @@ export default function CalendarScreen({ navigation }) {
           setFetchError(false);
         }
 
-        // Step 2: Fetch fresh data. Deduplication prevents a redundant request
-        // if TasksScreen or ProfileScreen is already fetching simultaneously.
         try {
           const fresh = await fetchAndCacheTasks();
           if (!mounted) return;
@@ -59,15 +265,14 @@ export default function CalendarScreen({ navigation }) {
         } catch {
           if (!mounted) return;
           setLoading(false);
-          // Only show the error state when there is nothing cached to display.
-          // If stale cache is showing, the offline banner covers the context.
           if (!cached) setFetchError(true);
         }
       }
 
       loadAndRefresh();
-
-      return () => { mounted = false; };
+      return () => {
+        mounted = false;
+      };
     }, []),
   );
 
@@ -116,22 +321,16 @@ export default function CalendarScreen({ navigation }) {
         current={today}
         onDayPress={(day) => setSelectedDate(day.dateString)}
         markedDates={markedDates}
-        markingType="dot"
         theme={{
           backgroundColor: "#f5f2f8",
           calendarBackground: "#f5f2f8",
-
           todayTextColor: "#451E5D",
           selectedDayBackgroundColor: "#451E5D",
           selectedDayTextColor: "#fff",
-
           arrowColor: "#451E5D",
-          dotColor: "#451E5D",
-
           textDayFontSize: 14,
           textMonthFontSize: 15,
           textMonthFontWeight: "bold",
-
           monthTextColor: "#1a1a1a",
           dayTextColor: "#2c3e50",
           textDisabledColor: "#c8c8d0",
@@ -155,15 +354,18 @@ export default function CalendarScreen({ navigation }) {
             Check your connection and try again.
           </Text>
         </View>
-      ) : dayTasks.length === 0 ? (
-        <Text style={styles.emptyText}>No tasks for this day.</Text>
       ) : (
-        <FlatList
-          data={dayTasks}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderTask}
-          contentContainerStyle={styles.listContent}
-        />
+        <>
+          <DaySummaryCard tasks={dayTasks} />
+          {dayTasks.length > 0 && (
+            <FlatList
+              data={dayTasks}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={renderTask}
+              contentContainerStyle={styles.listContent}
+            />
+          )}
+        </>
       )}
     </View>
   );
@@ -174,6 +376,184 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f2f8",
   },
+
+  // ── Shared empty state ──────────────────────────────────────────────────────
+  cardEmpty: {
+    backgroundColor: "#fff",
+    marginHorizontal: 14,
+    marginBottom: 8,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    shadowColor: "#451E5D",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  cardEmptyText: {
+    fontSize: 13,
+    color: "#c0b8cc",
+  },
+
+  // ── Simple card ─────────────────────────────────────────────────────────────
+  simpleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    backgroundColor: "#fff",
+    marginHorizontal: 14,
+    marginBottom: 8,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: "#451E5D",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  simpleRingWrap: {
+    width: S_RING_SIZE,
+    height: S_RING_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  simpleRingNum: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#451E5D",
+    lineHeight: 15,
+  },
+  simpleRingNumDone: {
+    color: "#4caf7d",
+  },
+  simpleRingSign: {
+    fontSize: 8,
+    fontWeight: "600",
+    color: "#b9a8d4",
+    lineHeight: 10,
+    marginTop: -1,
+  },
+  simpleRingSignDone: {
+    color: "#80c9a0",
+  },
+  simpleBody: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 8,
+  },
+  simpleStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  simpleStatItem: {
+    alignItems: "center",
+    gap: 2,
+  },
+  simpleStatNum: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2c2c2c",
+    lineHeight: 19,
+  },
+  simpleStatLbl: {
+    fontSize: 10,
+    color: "#bbb",
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  simpleStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "#ede8f5",
+  },
+  simpleStatusLine: {
+    fontSize: 11,
+    color: "#c0b8cc",
+    fontWeight: "500",
+  },
+  simpleStatusLineDone: {
+    color: "#4caf7d",
+  },
+  // ── Premium ring ────────────────────────────────────────────────────────────
+  ringContainer: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ringNum: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#451E5D",
+    lineHeight: 19,
+  },
+  ringNumDone: {
+    color: "#4caf7d",
+  },
+  ringSign: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#b9a8d4",
+    lineHeight: 11,
+    marginTop: -1,
+  },
+  ringSignDone: {
+    color: "#80c9a0",
+  },
+
+  // ── Premium card ────────────────────────────────────────────────────────────
+  premiumCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    backgroundColor: "#fff",
+    marginHorizontal: 14,
+    marginBottom: 8,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: "#451E5D",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  premiumBody: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 5,
+  },
+  premiumHeroRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+  },
+  premiumHeroNum: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#451E5D",
+    lineHeight: 30,
+  },
+  premiumHeroNumDone: {
+    color: "#4caf7d",
+  },
+  premiumHeroLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#bbb",
+    marginLeft: 4,
+  },
+  premiumDetail: {
+    fontSize: 12,
+    color: "#c0b8cc",
+    fontWeight: "500",
+  },
+
+  // ── Day section header ──────────────────────────────────────────────────────
   daySection: {
     paddingHorizontal: 16,
     paddingTop: 14,
@@ -187,15 +567,11 @@ const styles = StyleSheet.create({
   loader: {
     marginTop: 24,
   },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 24,
-    color: "#888",
-    fontSize: 14,
-  },
   listContent: {
     paddingBottom: 20,
   },
+
+  // ── Task rows ───────────────────────────────────────────────────────────────
   taskRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -247,6 +623,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#27ae60",
   },
+
+  // ── Error state ─────────────────────────────────────────────────────────────
   errorState: {
     alignItems: "center",
     marginTop: 40,
