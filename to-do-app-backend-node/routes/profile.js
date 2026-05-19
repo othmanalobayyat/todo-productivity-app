@@ -79,6 +79,8 @@ router.put(
 // API secret stays server-side — the client never sees it.
 router.delete("/profile/avatar", authMiddleware, async function (req, res) {
   try {
+    console.log("[avatar/delete] userId:", req.user.userId);
+
     var user = await Prisma.users.findUnique({
       where: { id: req.user.userId },
       select: { avatar_public_id: true },
@@ -88,17 +90,24 @@ router.delete("/profile/avatar", authMiddleware, async function (req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    console.log("[avatar/delete] avatar_public_id from DB:", user.avatar_public_id);
+
     // Attempt Cloudinary deletion only if we have a stored public_id.
     if (user.avatar_public_id) {
       try {
         var cloudName = process.env.CLOUDINARY_CLOUD_NAME;
         var apiKey    = process.env.CLOUDINARY_API_KEY;
         var apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+        console.log("[avatar/delete] env vars present — CLOUDINARY_CLOUD_NAME:", !!cloudName, "| CLOUDINARY_API_KEY:", !!apiKey, "| CLOUDINARY_API_SECRET:", !!apiSecret);
+
         var timestamp = Math.round(Date.now() / 1000).toString();
         var signature = crypto
           .createHash("sha256")
           .update(`public_id=${user.avatar_public_id}&timestamp=${timestamp}${apiSecret}`)
           .digest("hex");
+
+        console.log("[avatar/delete] timestamp:", timestamp, "| signature:", signature);
 
         var params = new URLSearchParams({
           public_id: user.avatar_public_id,
@@ -107,13 +116,15 @@ router.delete("/profile/avatar", authMiddleware, async function (req, res) {
           signature,
         });
 
-        await fetch(
+        var cdnRes = await fetch(
           `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`,
           { method: "POST", body: params },
         );
+        var cdnBody = await cdnRes.json();
+        console.log("[avatar/delete] Cloudinary response status:", cdnRes.status, "| body:", JSON.stringify(cdnBody));
       } catch (cdnErr) {
         // Log but don't block — the DB record will still be cleared.
-        console.error("Cloudinary delete failed:", cdnErr.message);
+        console.error("[avatar/delete] Cloudinary delete threw:", cdnErr.message, cdnErr);
       }
     }
 
@@ -123,6 +134,7 @@ router.delete("/profile/avatar", authMiddleware, async function (req, res) {
       data: { avatar: null, avatar_public_id: null },
     });
 
+    console.log("[avatar/delete] DB cleared. Sending 204.");
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ message: "Error deleting avatar" });
