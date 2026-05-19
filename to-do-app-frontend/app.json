@@ -25,8 +25,8 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "name": "Orvia",
-      "shortName": "Orvia",
+      "name": "ToDo Productivity App",
+      "shortName": "ToDo",
       "description": "Your calm, minimal productivity companion.",
       "lang": "en",
       "themeColor": "#451E5D",
