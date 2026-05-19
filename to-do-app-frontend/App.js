@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Image, Text, View, StyleSheet, StatusBar } from "react-native";
+import { Image, Platform, Text, View, StyleSheet, StatusBar } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import * as Linking from "expo-linking";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -226,12 +226,14 @@ export default function App() {
     }
 
     async function initApp() {
-      // Fire update check in the background — never blocks or delays startup.
-      // Resolves during the splash window on a normal connection; if slower,
-      // the modal simply appears shortly after the app loads.
-      checkForUpdate()
-        .then((info) => { if (info) setUpdateInfo(info); })
-        .catch(() => {});
+      // Update checks are only meaningful on the Android APK — "Update Now"
+      // opens an APK download URL, which is useless on web or iOS native.
+      // iOS native updates come from the App Store, not a download link.
+      if (Platform.OS === 'android') {
+        checkForUpdate()
+          .then((info) => { if (info) setUpdateInfo(info); })
+          .catch(() => {});
+      }
 
       await checkAuthStatus();
 

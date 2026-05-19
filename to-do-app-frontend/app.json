@@ -24,7 +24,13 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Orvia",
+      "shortName": "Orvia",
+      "description": "Your calm, minimal productivity companion.",
+      "lang": "en",
+      "themeColor": "#451E5D",
+      "backgroundColor": "#451E5D"
     },
     "plugins": ["@react-native-community/datetimepicker", "expo-font"],
     "extra": {

@@ -10,14 +10,17 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-function Step({ number, iconName, text }) {
+function Step({ number, iconName, text, hint }) {
   return (
     <View style={styles.stepRow}>
       <View style={styles.stepBubble}>
         <Text style={styles.stepBubbleText}>{number}</Text>
       </View>
       <Ionicons name={iconName} size={20} color="#451E5D" style={styles.stepIcon} />
-      <Text style={styles.stepText}>{text}</Text>
+      <View style={styles.stepTextWrap}>
+        <Text style={styles.stepText}>{text}</Text>
+        {!!hint && <Text style={styles.stepHint}>{hint}</Text>}
+      </View>
     </View>
   );
 }
@@ -64,13 +67,15 @@ export default function IosInstallSheet({ visible, onDismiss }) {
             <Step
               number="1"
               iconName="share-outline"
-              text="Tap the Share button at the bottom of Safari"
+              text="Open the Share menu in Safari"
+              hint="Look for the share icon (↑) in your browser toolbar or menu"
             />
             <View style={styles.stepDivider} />
             <Step
               number="2"
               iconName="add-circle-outline"
               text={'Tap "Add to Home Screen"'}
+              hint="Scroll down or tap More if you don't see it right away"
             />
           </View>
 
@@ -191,11 +196,19 @@ const styles = StyleSheet.create({
     marginRight: 10,
     flexShrink: 0,
   },
+  stepTextWrap: {
+    flex: 1,
+  },
   stepText: {
     fontSize: 14,
     color: '#333',
-    flex: 1,
     lineHeight: 20,
+  },
+  stepHint: {
+    fontSize: 12,
+    color: '#AAA',
+    lineHeight: 17,
+    marginTop: 2,
   },
   stepDivider: {
     height: 1,
