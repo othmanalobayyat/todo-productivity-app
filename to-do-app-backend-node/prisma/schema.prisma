@@ -140,5 +140,6 @@ model users {
   updated_at        DateTime?
   is_admin          Boolean @default(false)
   avatar            String?
+  avatar_public_id  String?
   tasks             tasks[]
 }

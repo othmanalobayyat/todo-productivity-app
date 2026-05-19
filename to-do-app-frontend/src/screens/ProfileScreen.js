@@ -92,8 +92,17 @@ export default function ProfileScreen({
       setLocalPreview(uri);
       setUploading(true);
 
-      const avatarUrl = await uploadAvatarToCDN(uri, userData?.id);
-      const response = await api.put("/profile", { avatar: avatarUrl });
+      // Delete the old Cloudinary image before uploading the new one.
+      if (userData?.avatar_public_id) {
+        try {
+          await api.delete("/profile/avatar");
+        } catch (_) {
+          // Non-fatal — the upload continues even if cleanup fails.
+        }
+      }
+
+      const { url, publicId } = await uploadAvatarToCDN(uri);
+      const response = await api.put("/profile", { avatar: url, avatar_public_id: publicId });
       onProfileUpdate(response.data);
       showToast("Profile photo updated.", "success");
     } catch (e) {
