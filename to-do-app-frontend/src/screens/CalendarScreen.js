@@ -47,7 +47,7 @@ function computeStats(tasks) {
 
 // ─── Simple summary card ──────────────────────────────────────────────────────
 
-const S_RING_SIZE = 76;
+const S_RING_SIZE = 62;
 const S_RING_STROKE = 5;
 const S_RING_R = (S_RING_SIZE - S_RING_STROKE) / 2;
 const S_RING_CIRC = 2 * Math.PI * S_RING_R;
@@ -103,37 +103,30 @@ function SimpleDaySummaryCard({ stats }) {
 
   return (
     <View style={styles.simpleCard}>
-      <View style={styles.simpleTopRow}>
-        <SimpleRing progress={progress} />
-        <View style={styles.simpleStatsList}>
-          <View style={styles.simpleStatItem}>
-            <Text style={[styles.simpleStatNum, { color: "#6B3FA0" }]}>{total}</Text>
-            <Text style={styles.simpleStatLbl}>total</Text>
-          </View>
-          <View style={styles.simpleStatItem}>
-            <Text style={[styles.simpleStatNum, { color: "#4caf7d" }]}>{completed}</Text>
-            <Text style={styles.simpleStatLbl}>done</Text>
-          </View>
-          <View style={styles.simpleStatItem}>
-            <Text style={[styles.simpleStatNum, { color: "#F59E0B" }]}>{pending}</Text>
-            <Text style={styles.simpleStatLbl}>left</Text>
-          </View>
+      <SimpleRing progress={progress} />
+      <View style={styles.simpleBody}>
+        <View style={styles.simpleStatsRow}>
+          <Text style={[styles.simpleStatNum, { color: "#6B3FA0" }]}>{total}</Text>
+          <Text style={styles.simpleStatLbl}> total</Text>
+          <Text style={styles.simpleStatDot}>·</Text>
+          <Text style={[styles.simpleStatNum, { color: "#4caf7d" }]}>{completed}</Text>
+          <Text style={styles.simpleStatLbl}> done</Text>
+          <Text style={styles.simpleStatDot}>·</Text>
+          <Text style={[styles.simpleStatNum, { color: "#F59E0B" }]}>{pending}</Text>
+          <Text style={styles.simpleStatLbl}> left</Text>
         </View>
+        <View style={styles.simpleBarTrack}>
+          <View
+            style={[
+              styles.simpleBarFill,
+              { width: `${pct}%`, backgroundColor: allDone ? "#4caf7d" : "#6B3FA0" },
+            ]}
+          />
+        </View>
+        <Text style={[styles.simpleCompletionText, allDone && styles.simpleCompletionTextDone]}>
+          {allDone ? "All tasks complete" : `${pct}% complete`}
+        </Text>
       </View>
-      <View style={styles.simpleBarTrack}>
-        <View
-          style={[
-            styles.simpleBarFill,
-            {
-              width: `${pct}%`,
-              backgroundColor: allDone ? "#4caf7d" : "#6B3FA0",
-            },
-          ]}
-        />
-      </View>
-      <Text style={[styles.simpleCompletionText, allDone && styles.simpleCompletionTextDone]}>
-        {allDone ? "All tasks complete" : `${pct}% complete`}
-      </Text>
     </View>
   );
 }
@@ -404,23 +397,20 @@ const styles = StyleSheet.create({
 
   // ── Simple card ─────────────────────────────────────────────────────────────
   simpleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
     backgroundColor: "#fff",
     marginHorizontal: 14,
     marginBottom: 10,
-    borderRadius: 22,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     shadowColor: "#451E5D",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
-  },
-  simpleTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 20,
-    marginBottom: 18,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 2,
   },
   simpleRingWrap: {
     width: S_RING_SIZE,
@@ -429,49 +419,52 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   simpleRingNum: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "700",
     color: "#451E5D",
-    lineHeight: 22,
+    lineHeight: 18,
   },
   simpleRingNumDone: {
     color: "#4caf7d",
   },
   simpleRingSign: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "600",
     color: "#b9a8d4",
-    lineHeight: 11,
+    lineHeight: 10,
     marginTop: -1,
   },
   simpleRingSignDone: {
     color: "#80c9a0",
   },
-  simpleStatsList: {
+  simpleBody: {
     flex: 1,
-    gap: 10,
+    gap: 6,
   },
-  simpleStatItem: {
+  simpleStatsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    flexWrap: "wrap",
   },
   simpleStatNum: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: "700",
-    minWidth: 26,
   },
   simpleStatLbl: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#b0a8c0",
-    fontWeight: "500",
+    fontWeight: "400",
+  },
+  simpleStatDot: {
+    fontSize: 12,
+    color: "#d0c8dc",
+    marginHorizontal: 5,
   },
   simpleBarTrack: {
-    height: 5,
+    height: 4,
     backgroundColor: "#ede8f5",
     borderRadius: 10,
     overflow: "hidden",
-    marginBottom: 9,
   },
   simpleBarFill: {
     height: "100%",
