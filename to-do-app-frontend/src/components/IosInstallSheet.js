@@ -66,16 +66,21 @@ export default function IosInstallSheet({ visible, onDismiss }) {
           <View style={styles.stepsBox}>
             <Step
               number="1"
-              iconName="share-outline"
-              text="Open the Share menu in Safari"
-              hint="Look for the share icon (↑) in your browser toolbar or menu"
+              iconName="ellipsis-horizontal"
+              text="Open the browser menu"
             />
             <View style={styles.stepDivider} />
             <Step
               number="2"
+              iconName="share-outline"
+              text="Tap Share"
+            />
+            <View style={styles.stepDivider} />
+            <Step
+              number="3"
               iconName="add-circle-outline"
               text={'Tap "Add to Home Screen"'}
-              hint="Scroll down or tap More if you don't see it right away"
+              hint="You may need to tap View More first"
             />
           </View>
 

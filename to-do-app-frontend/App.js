@@ -292,7 +292,19 @@ export default function App() {
         <SplashScreen />
       ) : (
         <>
-          <NavigationContainer linking={linking}>
+          <NavigationContainer
+            linking={linking}
+            documentTitle={{
+              // On web, React Navigation defaults to route.name ("Tasks",
+              // "Calendar", etc.) for screens with no explicit title option.
+              // Safari reads document.title for the Share Sheet and the
+              // "Add to Home Screen" label — so without this override the
+              // share sheet shows "Tasks" instead of "Orvia".
+              // Screens that have an explicit title (Change Password, Edit
+              // Task, etc.) still show their own title in the browser tab.
+              formatter: (options, route) => options?.title ?? 'Orvia',
+            }}
+          >
             <StatusBar backgroundColor="#451E5D" />
             <Stack.Navigator initialRouteName={isLoggedIn ? "Main" : "Welcome"}>
               {!isLoggedIn && (
