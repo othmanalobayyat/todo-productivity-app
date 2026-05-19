@@ -1,6 +1,6 @@
 {
-  "name": "Orvia",
-  "short_name": "Orvia",
+  "name": "ToDo Productivity App",
+  "short_name": "ToDo",
   "description": "Your calm, minimal productivity companion.",
   "start_url": "/",
   "scope": "/",

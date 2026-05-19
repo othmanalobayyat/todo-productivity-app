@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Image, Platform, Text, View, StyleSheet, StatusBar } from "react-native";
+import {
+  Image,
+  Platform,
+  Text,
+  View,
+  StyleSheet,
+  StatusBar,
+} from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import * as Linking from "expo-linking";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -7,7 +14,10 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/FontAwesome";
 import NetInfo from "@react-native-community/netinfo";
-import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import api, { registerLogoutCallback } from "./src/services/api";
 import { AUTH_TOKEN_KEY, USER_PROFILE_KEY } from "./src/constants/storage";
 import { checkForUpdate } from "./src/services/updateService";
@@ -30,7 +40,11 @@ import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CalendarScreen from "./src/screens/CalendarScreen";
 import Toast, { toastRef, showToast } from "./src/components/Toast";
 import { drainQueue, loadQueue, clearQueue } from "./src/services/writeQueue";
-import { loadCachedTasks, saveTasks, fetchAndCacheTasks } from "./src/services/taskCache";
+import {
+  loadCachedTasks,
+  saveTasks,
+  fetchAndCacheTasks,
+} from "./src/services/taskCache";
 import { triggerTaskRefresh } from "./src/services/taskEvents";
 
 const Stack = createStackNavigator();
@@ -61,7 +75,11 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => (
-          <Icon name={TAB_ICONS[route.name] ?? "circle"} size={size} color={color} />
+          <Icon
+            name={TAB_ICONS[route.name] ?? "circle"}
+            size={size}
+            color={color}
+          />
         ),
         tabBarActiveTintColor: "#451E5D",
         tabBarInactiveTintColor: "gray",
@@ -72,7 +90,11 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
       <Tab.Screen name="Tasks" options={{ headerShown: false }}>
         {(props) => <TasksScreen {...props} userData={userData} />}
       </Tab.Screen>
-      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ headerShown: false }} />
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ headerShown: false }}
+      />
       <Tab.Screen name="Profile" options={{ headerShown: false }}>
         {(props) => (
           <ProfileScreen
@@ -108,7 +130,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [isOffline, setIsOffline] = useState(false);
-  const { shouldShow: showInstallSheet, dismiss: dismissInstallSheet } = useIosInstallPrompt();
+  const { shouldShow: showInstallSheet, dismiss: dismissInstallSheet } =
+    useIosInstallPrompt();
 
   // Subscribe to network state changes.
   // Tracks the previous connection value so we can detect the offline→online
@@ -123,19 +146,17 @@ export default function App() {
         // Just came back online — drain the write queue if it has anything.
         const queue = await loadQueue();
         if (queue.length > 0) {
-          showToast('Syncing offline changes...', 'success');
+          showToast("Syncing offline changes...", "success");
 
           const { success } = await drainQueue(async (op, result) => {
             // For offline creates: replace the local placeholder in the cache
             // with the real server task before the full refresh fires.
-            if (op.type === 'create' && result?.serverTask) {
+            if (op.type === "create" && result?.serverTask) {
               const cached = await loadCachedTasks();
               if (cached) {
                 await saveTasks(
                   cached.map((t) =>
-                    t.id === result.localId
-                      ? { ...result.serverTask }
-                      : t,
+                    t.id === result.localId ? { ...result.serverTask } : t,
                   ),
                 );
               }
@@ -151,9 +172,9 @@ export default function App() {
           triggerTaskRefresh();
 
           if (success) {
-            showToast('Offline changes synced', 'success');
+            showToast("Offline changes synced", "success");
           } else {
-            showToast('Some changes could not be synced');
+            showToast("Some changes could not be synced");
           }
         }
       }
@@ -170,10 +191,14 @@ export default function App() {
     // Verifies the token silently; on 401 the api.js interceptor forces logout.
     // Network/server errors are ignored so the cached session stays alive.
     function verifyTokenBackground() {
-      api.get("/profile")
+      api
+        .get("/profile")
         .then(async (response) => {
           setUserData(response.data);
-          await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(response.data));
+          await AsyncStorage.setItem(
+            USER_PROFILE_KEY,
+            JSON.stringify(response.data),
+          );
         })
         .catch(() => {
           // 401 → handled by the api.js response interceptor (calls handleLogoutSuccess).
@@ -189,7 +214,10 @@ export default function App() {
         const response = await api.get("/profile");
         setUserData(response.data);
         setIsLoggedIn(true);
-        await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(response.data));
+        await AsyncStorage.setItem(
+          USER_PROFILE_KEY,
+          JSON.stringify(response.data),
+        );
       } catch {
         setIsLoggedIn(false);
       }
@@ -229,9 +257,11 @@ export default function App() {
       // Update checks are only meaningful on the Android APK — "Update Now"
       // opens an APK download URL, which is useless on web or iOS native.
       // iOS native updates come from the App Store, not a download link.
-      if (Platform.OS === 'android') {
+      if (Platform.OS === "android") {
         checkForUpdate()
-          .then((info) => { if (info) setUpdateInfo(info); })
+          .then((info) => {
+            if (info) setUpdateInfo(info);
+          })
           .catch(() => {});
       }
 
@@ -253,7 +283,9 @@ export default function App() {
     setIsLoggedIn(true);
     setUserData(user);
     // Cache the profile so future startups don't need to block on the network.
-    AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user)).catch(() => {});
+    AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user)).catch(
+      () => {},
+    );
   };
 
   // Called on both manual logout (from ProfileScreen) and automatic 401 logout
@@ -276,7 +308,9 @@ export default function App() {
   const handleProfileUpdate = (updatedUser) => {
     setUserData(updatedUser);
     // Keep the cache in sync when the user edits their name or email.
-    AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser)).catch(() => {});
+    AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser)).catch(
+      () => {},
+    );
   };
 
   const headerOptions = (title) => ({
@@ -302,7 +336,7 @@ export default function App() {
               // share sheet shows "Tasks" instead of "Orvia".
               // Screens that have an explicit title (Change Password, Edit
               // Task, etc.) still show their own title in the browser tab.
-              formatter: (options, route) => options?.title ?? 'Orvia',
+              formatter: (options, route) => options?.title ?? "ToDo",
             }}
           >
             <StatusBar backgroundColor="#451E5D" />
@@ -316,10 +350,16 @@ export default function App() {
                   />
                   <Stack.Screen name="Login" options={{ headerShown: false }}>
                     {(props) => (
-                      <LoginScreen {...props} onLoginSuccess={handleLoginSuccess} />
+                      <LoginScreen
+                        {...props}
+                        onLoginSuccess={handleLoginSuccess}
+                      />
                     )}
                   </Stack.Screen>
-                  <Stack.Screen name="Register" options={{ headerShown: false }}>
+                  <Stack.Screen
+                    name="Register"
+                    options={{ headerShown: false }}
+                  >
                     {(props) => (
                       <RegisterScreen
                         {...props}
@@ -395,7 +435,10 @@ export default function App() {
             }}
             onLater={() => setUpdateInfo(null)}
           />
-          <IosInstallSheet visible={showInstallSheet} onDismiss={dismissInstallSheet} />
+          <IosInstallSheet
+            visible={showInstallSheet}
+            onDismiss={dismissInstallSheet}
+          />
           <Toast ref={toastRef} />
           <OfflineBanner visible={isOffline} />
         </>
