@@ -12,19 +12,24 @@ router.get("/profile", authMiddleware, async function (req, res) {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    delete user.password;
-    res.json(user);
+    res.json({ id: user.id, name: user.name, email: user.email, avatar: user.avatar || null });
   } catch (error) {
     res.status(500).json({ message: "Error fetching profile" });
   }
 });
 
+const HTTPS_URL = /^https:\/\/.+/;
+
 router.put(
   "/profile",
   authMiddleware,
   [
-    body("email").isEmail(),
-    body("name").isLength({ min: 2, max: 100 }),
+    body("email").optional().isEmail(),
+    body("name").optional().isLength({ min: 2, max: 100 }),
+    body("avatar").optional({ nullable: true }).custom((val) => {
+      if (val !== null && !HTTPS_URL.test(val)) throw new Error("Invalid avatar URL");
+      return true;
+    }),
   ],
   async function (req, res) {
     try {
@@ -33,11 +38,20 @@ router.put(
         return res.status(400).json({ errors: errors.array() });
       }
 
+      var data = {};
+      if (req.body.name  !== undefined) data.name  = req.body.name;
+      if (req.body.email !== undefined) data.email = req.body.email;
+      if (req.body.avatar !== undefined) data.avatar = req.body.avatar;
+
+      if (Object.keys(data).length === 0) {
+        return res.status(400).json({ message: "Nothing to update" });
+      }
+
       var updated = await Prisma.users.update({
         where: { id: req.user.userId },
-        data: { name: req.body.name, email: req.body.email },
+        data,
       });
-      res.json({ name: updated.name, email: updated.email });
+      res.json({ name: updated.name, email: updated.email, avatar: updated.avatar || null });
     } catch (error) {
       if (error.code === "P2002") {
         return res.status(409).json({ message: "That email address is already in use." });

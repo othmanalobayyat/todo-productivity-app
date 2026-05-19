@@ -8,6 +8,7 @@ import {
   StatusBar,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon5 from "react-native-vector-icons/FontAwesome5";
@@ -18,6 +19,7 @@ import api, { clearCachedToken } from "../services/api";
 import { AUTH_TOKEN_KEY } from "../constants/storage";
 import { calculateStreak } from "../utils/streakUtils";
 import { loadCachedTasks, fetchAndCacheTasks } from "../services/taskCache";
+import { pickImageFromLibrary, uploadAvatarToCDN } from "../utils/mediaUpload";
 
 const ACHIEVEMENTS = [
   {
@@ -50,9 +52,12 @@ export default function ProfileScreen({
   navigation,
   userData,
   onLogoutSuccess,
+  onProfileUpdate,
 }) {
   const [aboutVisible, setAboutVisible] = useState(false);
   const [tasks, setTasks] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [localPreview, setLocalPreview] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -78,6 +83,27 @@ export default function ProfileScreen({
     };
   }, [navigation]);
 
+  const handleChangeAvatar = async () => {
+    if (uploading) return;
+    try {
+      const uri = await pickImageFromLibrary();
+      if (!uri) return;
+
+      setLocalPreview(uri);
+      setUploading(true);
+
+      const avatarUrl = await uploadAvatarToCDN(uri, userData?.id);
+      const response = await api.put("/profile", { avatar: avatarUrl });
+      onProfileUpdate(response.data);
+      showToast("Profile photo updated.", "success");
+    } catch (e) {
+      setLocalPreview(null);
+      showToast(e.message || "Failed to update photo. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await api.post("/logout");
@@ -89,6 +115,7 @@ export default function ProfileScreen({
   };
 
   const initials = userData?.name?.trim().charAt(0).toUpperCase() || "?";
+  const displayAvatar = localPreview || userData?.avatar || null;
   const streak = calculateStreak(tasks);
   const completedCount = tasks.filter((t) => t.completed).length;
   const total = tasks.length;
@@ -108,11 +135,25 @@ export default function ProfileScreen({
       >
         {/* Hero */}
         <View style={styles.heroSection}>
-          <View style={styles.avatarRing}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </View>
-          </View>
+          <TouchableOpacity
+            style={styles.avatarRing}
+            onPress={handleChangeAvatar}
+            disabled={uploading}
+            activeOpacity={0.8}
+          >
+            {displayAvatar ? (
+              <Image source={{ uri: displayAvatar }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </View>
+            )}
+            {uploading && (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color="#fff" size="small" />
+              </View>
+            )}
+          </TouchableOpacity>
           <Text style={styles.heroName}>{userData?.name || "—"}</Text>
           <Text style={styles.heroEmail}>{userData?.email || ""}</Text>
         </View>
@@ -314,6 +355,18 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: 44,
     backgroundColor: "#451E5D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 50,
+    backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
   },

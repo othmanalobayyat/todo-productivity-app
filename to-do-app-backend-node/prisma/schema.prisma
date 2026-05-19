@@ -139,5 +139,6 @@ model users {
   created_at        DateTime?
   updated_at        DateTime?
   is_admin          Boolean @default(false)
+  avatar            String?
   tasks             tasks[]
 }
