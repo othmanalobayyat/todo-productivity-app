@@ -71,6 +71,24 @@ const SplashScreen = () => (
 const TAB_ICONS = { Tasks: "tasks", Calendar: "calendar", Profile: "user" };
 
 function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
+  const insets = useSafeAreaInsets();
+
+  // On iPhone web/PWA the content zone is a fixed 49px regardless of the
+  // home-indicator inset. justifyContent:'flex-start' in the tab items leaves
+  // only ~8px between the label and the home-indicator zone — too cramped.
+  // Adding 10px to the bar height (web-only, only when a home indicator is
+  // present) gives ~18px of breathing room, matching native iOS proportions.
+  // paddingBottom is explicitly repeated so it overrides RN's internal value
+  // with the same number (no double-padding). Android and desktop are unaffected.
+  const webTabBarStyle =
+    Platform.OS === "web" && insets.bottom > 0
+      ? {
+          backgroundColor: "#fff",
+          height: 49 + insets.bottom + 10,
+          paddingBottom: insets.bottom,
+        }
+      : { backgroundColor: "#fff" };
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -83,7 +101,7 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
         ),
         tabBarActiveTintColor: "#451E5D",
         tabBarInactiveTintColor: "gray",
-        tabBarStyle: { backgroundColor: "#fff" },
+        tabBarStyle: webTabBarStyle,
         tabBarLabelStyle: { fontSize: 12 },
       })}
     >
