@@ -12,6 +12,8 @@ import api, { registerLogoutCallback } from "./src/services/api";
 import { AUTH_TOKEN_KEY, USER_PROFILE_KEY } from "./src/constants/storage";
 import { checkForUpdate } from "./src/services/updateService";
 import UpdateModal from "./src/components/UpdateModal";
+import IosInstallSheet from "./src/components/IosInstallSheet";
+import { useIosInstallPrompt } from "./src/hooks/useIosInstallPrompt";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
@@ -106,6 +108,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [isOffline, setIsOffline] = useState(false);
+  const { shouldShow: showInstallSheet, dismiss: dismissInstallSheet } = useIosInstallPrompt();
 
   // Subscribe to network state changes.
   // Tracks the previous connection value so we can detect the offline→online
@@ -378,6 +381,7 @@ export default function App() {
             }}
             onLater={() => setUpdateInfo(null)}
           />
+          <IosInstallSheet visible={showInstallSheet} onDismiss={dismissInstallSheet} />
           <Toast ref={toastRef} />
           <OfflineBanner visible={isOffline} />
         </>
