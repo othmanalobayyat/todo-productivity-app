@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
 import { finalizeAuth } from '../services/authService';
 import { showToast } from '../components/Toast';
@@ -12,6 +13,7 @@ import { showToast } from '../components/Toast';
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -64,7 +66,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingTop: Math.max(insets.top + 12, 56) }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -177,7 +179,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: '#fff',
     paddingHorizontal: 28,
-    paddingTop: 56,
     paddingBottom: 40,
   },
   backBtn: {

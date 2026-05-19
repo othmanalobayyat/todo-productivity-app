@@ -4,12 +4,14 @@ import {
   TouchableOpacity, Pressable, StatusBar, Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height } = Dimensions.get("window");
 
 export default function WelcomeScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top + 12, 56) }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* Illustration */}
@@ -55,7 +57,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     paddingHorizontal: 28,
-    paddingTop: 56,
     paddingBottom: 40,
   },
   illustrationArea: {

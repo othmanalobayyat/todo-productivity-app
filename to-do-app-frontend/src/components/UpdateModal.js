@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
  * Props:
@@ -17,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
  *   onLater      — called when "Later" is pressed (also fires on Android back)
  */
 export default function UpdateModal({ visible, info, onUpdate, onLater }) {
+  const insets = useSafeAreaInsets();
   if (!info) return null;
 
   const { latestVersion, releaseNotes, required } = info;
@@ -30,7 +32,7 @@ export default function UpdateModal({ visible, info, onUpdate, onLater }) {
       statusBarTranslucent
     >
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom + 12, 40) }]}>
 
           {/* Icon */}
           <View style={styles.iconWrap}>
@@ -97,7 +99,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingTop: 28,
     paddingHorizontal: 24,
-    paddingBottom: 40,
     // Subtle purple-tinted shadow on the sheet
     shadowColor: '#451E5D',
     shadowOffset: { width: 0, height: -4 },

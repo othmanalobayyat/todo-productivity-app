@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function Step({ number, iconName, text, hint }) {
   return (
@@ -36,6 +37,7 @@ function Step({ number, iconName, text, hint }) {
  *   onDismiss — called when "Not Now" is pressed
  */
 export default function IosInstallSheet({ visible, onDismiss }) {
+  const insets = useSafeAreaInsets();
   // Safety net: never mount on native — hook already prevents shouldShow from
   // being true on non-web, but this guard keeps the import tree clean.
   if (Platform.OS !== "web") return null;
@@ -49,7 +51,7 @@ export default function IosInstallSheet({ visible, onDismiss }) {
       statusBarTranslucent
     >
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom + 12, 44) }]}>
           {/* Drag handle — matches native iOS sheet aesthetic */}
           <View style={styles.handle} />
 
@@ -112,7 +114,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     paddingTop: 12,
     paddingHorizontal: 24,
-    paddingBottom: 44,
     shadowColor: "#451E5D",
     shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.1,
