@@ -113,6 +113,16 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
         tabBarInactiveTintColor: "gray",
         tabBarStyle: webTabBarStyle,
         tabBarLabelStyle: { fontSize: 12 },
+        // Shift the icon+label group down so it reads as visually centered
+        // in the full bar height (content zone + safe-area zone) rather than
+        // anchored to the top of the content zone. tabBarIconStyle targets the
+        // TabBarIcon wrapper View; since the label is the next sibling in the
+        // flex column it follows automatically. overflow:'visible' on the item
+        // means the label can render into the safe-area zone without clipping.
+        tabBarIconStyle:
+          Platform.OS === "web" && insets.bottom > 0
+            ? { marginTop: Math.round(insets.bottom / 3) }
+            : undefined,
       })}
     >
       <Tab.Screen name="Tasks" options={{ headerShown: false }}>
