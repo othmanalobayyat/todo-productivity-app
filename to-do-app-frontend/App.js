@@ -70,54 +70,30 @@ const SplashScreen = () => (
 // Defined outside App so it is not recreated on every render.
 const TAB_ICONS = { Tasks: "tasks", Calendar: "calendar", Profile: "user" };
 
-// ─── DEBUG OVERLAY ────────────────────────────────────────────────────────────
-// Floating readout of safe-area insets and computed tab bar dimensions.
-// pointerEvents="none" so it never blocks taps. REMOVE before shipping.
-function DebugInsetsOverlay() {
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = 49 + insets.bottom + 4;
-  const conditionActive = Platform.OS === "web" && insets.bottom > 0;
-  return (
-    <View pointerEvents="none" style={debugStyles.overlay}>
-      <Text style={debugStyles.text}>
-        {[
-          `[DEBUG] platform=${Platform.OS}`,
-          `insets  T=${insets.top} B=${insets.bottom} L=${insets.left} R=${insets.right}`,
-          `tabBar  height=${tabBarHeight}  paddingBottom=${insets.bottom}`,
-          `webCondition=${conditionActive}`,
-        ].join("\n")}
-      </Text>
-    </View>
-  );
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
 function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
   const insets = useSafeAreaInsets();
 
-  // DEBUG: tab bar painted semi-transparent red so its exact bounds are visible.
-  // The top red border shows where the tab bar begins; the bottom of the red
-  // area shows where it ends (should touch the physical screen bottom on iOS PWA).
+  // On iPhone web/PWA the content zone is a fixed 49px regardless of the
+  // home-indicator inset. justifyContent:'flex-start' in the tab items leaves
+  // only ~8px between the label and the home-indicator zone — too cramped.
+  // Adding 4px to the bar height (web-only, only when a home indicator is
+  // present) gives ~12px of breathing room, matching native iOS proportions.
+  // Android and desktop are unaffected.
   const webTabBarStyle =
     Platform.OS === "web" && insets.bottom > 0
       ? {
-          backgroundColor: "rgba(255,0,0,0.15)",
-          borderTopWidth: 0,
-          borderTopColor: "red",
+          backgroundColor: "#fff",
           height: 49 + insets.bottom + 4,
-          //paddingBottom: insets.bottom,
+          borderTopWidth: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
         }
-      : {
-          backgroundColor: "rgba(0,0,255,0.15)",
-          borderTopWidth: 2,
-          borderTopColor: "blue",
-        };
+      : { backgroundColor: "#fff" };
 
   return (
-    // DEBUG: sceneContainerStyle=lime so each tab screen's container is visible.
-    // If lime bleeds outside the screen area you'll see it behind the tab bar.
     <Tab.Navigator
-      sceneContainerStyle={{ backgroundColor: "rgba(0,200,0,0.25)" }}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => (
           <Icon
@@ -366,169 +342,131 @@ export default function App() {
   });
 
   return (
-    // DEBUG: outer View with chartreuse border traces SafeAreaProvider's bounds.
-    <View style={debugStyles.safeAreaProviderWrap}>
-      <SafeAreaProvider>
-        {isLoading ? (
-          <SplashScreen />
-        ) : (
-          <>
-            <NavigationContainer
-              linking={linking}
-              documentTitle={{
-                // On web, React Navigation defaults to route.name ("Tasks",
-                // "Calendar", etc.) for screens with no explicit title option.
-                // Safari reads document.title for the Share Sheet and the
-                // "Add to Home Screen" label — so without this override the
-                // share sheet shows "Tasks" instead of "Orvia".
-                // Screens that have an explicit title (Change Password, Edit
-                // Task, etc.) still show their own title in the browser tab.
-                formatter: (options, route) => options?.title ?? "ToDo",
-              }}
-            >
-              <StatusBar backgroundColor="#451E5D" />
-              {/* DEBUG: cyan tint on Stack scene container. */}
-              <Stack.Navigator
-                sceneContainerStyle={{ backgroundColor: "rgba(0,200,255,0.2)" }}
-                initialRouteName={isLoggedIn ? "Main" : "Welcome"}
-              >
-                {!isLoggedIn && (
-                  <>
-                    <Stack.Screen
-                      name="Welcome"
-                      component={WelcomeScreen}
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen name="Login" options={{ headerShown: false }}>
-                      {(props) => (
-                        <LoginScreen
-                          {...props}
-                          onLoginSuccess={handleLoginSuccess}
-                        />
-                      )}
-                    </Stack.Screen>
-                    <Stack.Screen
-                      name="Register"
-                      options={{ headerShown: false }}
-                    >
-                      {(props) => (
-                        <RegisterScreen
-                          {...props}
-                          onRegisterSuccess={handleLoginSuccess}
-                        />
-                      )}
-                    </Stack.Screen>
-                    <Stack.Screen
-                      name="ForgotPassword"
-                      component={ForgotPasswordScreen}
-                      options={{ headerShown: false }}
-                    />
-                  </>
-                )}
-                {isLoggedIn && (
-                  <>
-                    <Stack.Screen name="Main" options={{ headerShown: false }}>
-                      {() => (
-                        <TabNavigator
-                          userData={userData}
-                          onLogoutSuccess={handleLogoutSuccess}
-                          onProfileUpdate={handleProfileUpdate}
-                        />
-                      )}
-                    </Stack.Screen>
-                    <Stack.Screen
-                      name="CreateTask"
-                      component={CreateTaskScreen}
-                      options={headerOptions("Create Task")}
-                    />
-                    <Stack.Screen
-                      name="EditTask"
-                      component={EditTaskScreen}
-                      options={headerOptions("Edit Task")}
-                    />
-                    <Stack.Screen
-                      name="TaskDetails"
-                      component={TaskDetailsScreen}
-                      options={headerOptions("Task Details")}
-                    />
-                    <Stack.Screen
-                      name="ChangePassword"
-                      component={ChangePasswordScreen}
-                      options={headerOptions("Change Password")}
-                    />
-                    <Stack.Screen
-                      name="EditProfile"
-                      options={headerOptions("Edit Profile")}
-                    >
-                      {(props) => (
-                        <EditProfileScreen
-                          {...props}
-                          onProfileUpdate={handleProfileUpdate}
-                        />
-                      )}
-                    </Stack.Screen>
-                  </>
-                )}
-                {/* Always registered so deep links work regardless of auth state */}
-                <Stack.Screen
-                  name="ResetPassword"
-                  component={ResetPasswordScreen}
-                  options={{ headerShown: false }}
-                />
-              </Stack.Navigator>
-            </NavigationContainer>
-            <UpdateModal
-              visible={updateInfo !== null}
-              info={updateInfo}
-              onUpdate={() => {
-                Linking.openURL(updateInfo.downloadUrl);
-                setUpdateInfo(null);
-              }}
-              onLater={() => setUpdateInfo(null)}
-            />
-            <IosInstallSheet
-              visible={showInstallSheet}
-              onDismiss={dismissInstallSheet}
-            />
-            <Toast ref={toastRef} />
-            <OfflineBanner visible={isOffline} />
-            {/* DEBUG: floating inset/height readout — remove before shipping */}
-            <DebugInsetsOverlay />
-          </>
-        )}
-      </SafeAreaProvider>
-    </View>
+    <SafeAreaProvider>
+      {isLoading ? (
+        <SplashScreen />
+      ) : (
+        <>
+          <NavigationContainer
+            linking={linking}
+            documentTitle={{
+              // On web, React Navigation defaults to route.name ("Tasks",
+              // "Calendar", etc.) for screens with no explicit title option.
+              // Safari reads document.title for the Share Sheet and the
+              // "Add to Home Screen" label — so without this override the
+              // share sheet shows "Tasks" instead of "Orvia".
+              // Screens that have an explicit title (Change Password, Edit
+              // Task, etc.) still show their own title in the browser tab.
+              formatter: (options, route) => options?.title ?? "ToDo",
+            }}
+          >
+            <StatusBar backgroundColor="#451E5D" />
+            <Stack.Navigator initialRouteName={isLoggedIn ? "Main" : "Welcome"}>
+              {!isLoggedIn && (
+                <>
+                  <Stack.Screen
+                    name="Welcome"
+                    component={WelcomeScreen}
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen name="Login" options={{ headerShown: false }}>
+                    {(props) => (
+                      <LoginScreen
+                        {...props}
+                        onLoginSuccess={handleLoginSuccess}
+                      />
+                    )}
+                  </Stack.Screen>
+                  <Stack.Screen
+                    name="Register"
+                    options={{ headerShown: false }}
+                  >
+                    {(props) => (
+                      <RegisterScreen
+                        {...props}
+                        onRegisterSuccess={handleLoginSuccess}
+                      />
+                    )}
+                  </Stack.Screen>
+                  <Stack.Screen
+                    name="ForgotPassword"
+                    component={ForgotPasswordScreen}
+                    options={{ headerShown: false }}
+                  />
+                </>
+              )}
+              {isLoggedIn && (
+                <>
+                  <Stack.Screen name="Main" options={{ headerShown: false }}>
+                    {() => (
+                      <TabNavigator
+                        userData={userData}
+                        onLogoutSuccess={handleLogoutSuccess}
+                        onProfileUpdate={handleProfileUpdate}
+                      />
+                    )}
+                  </Stack.Screen>
+                  <Stack.Screen
+                    name="CreateTask"
+                    component={CreateTaskScreen}
+                    options={headerOptions("Create Task")}
+                  />
+                  <Stack.Screen
+                    name="EditTask"
+                    component={EditTaskScreen}
+                    options={headerOptions("Edit Task")}
+                  />
+                  <Stack.Screen
+                    name="TaskDetails"
+                    component={TaskDetailsScreen}
+                    options={headerOptions("Task Details")}
+                  />
+                  <Stack.Screen
+                    name="ChangePassword"
+                    component={ChangePasswordScreen}
+                    options={headerOptions("Change Password")}
+                  />
+                  <Stack.Screen
+                    name="EditProfile"
+                    options={headerOptions("Edit Profile")}
+                  >
+                    {(props) => (
+                      <EditProfileScreen
+                        {...props}
+                        onProfileUpdate={handleProfileUpdate}
+                      />
+                    )}
+                  </Stack.Screen>
+                </>
+              )}
+              {/* Always registered so deep links work regardless of auth state */}
+              <Stack.Screen
+                name="ResetPassword"
+                component={ResetPasswordScreen}
+                options={{ headerShown: false }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+          <UpdateModal
+            visible={updateInfo !== null}
+            info={updateInfo}
+            onUpdate={() => {
+              Linking.openURL(updateInfo.downloadUrl);
+              setUpdateInfo(null);
+            }}
+            onLater={() => setUpdateInfo(null)}
+          />
+          <IosInstallSheet
+            visible={showInstallSheet}
+            onDismiss={dismissInstallSheet}
+          />
+          <Toast ref={toastRef} />
+          <OfflineBanner visible={isOffline} />
+        </>
+      )}
+    </SafeAreaProvider>
   );
 }
-
-// ─── DEBUG STYLES (remove before shipping) ────────────────────────────────────
-const debugStyles = StyleSheet.create({
-  safeAreaProviderWrap: {
-    flex: 1,
-    borderWidth: 3,
-    borderColor: "chartreuse",
-  },
-  overlay: {
-    position: "absolute",
-    // Sit just above the tab bar area so the label doesn't overlap the icons.
-    // Adjust this value if the readout overlaps something important.
-    bottom: 100,
-    left: 8,
-    right: 8,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    borderRadius: 6,
-    padding: 6,
-    zIndex: 99999,
-    elevation: 99,
-  },
-  text: {
-    color: "#fff",
-    fontSize: 11,
-    fontFamily: Platform.OS === "web" ? "monospace" : "Courier",
-    lineHeight: 16,
-  },
-});
-// ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   splashContainer: {
