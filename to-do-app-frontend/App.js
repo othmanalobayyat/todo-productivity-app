@@ -84,7 +84,7 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
     Platform.OS === "web" && insets.bottom > 0
       ? {
           backgroundColor: "#fff",
-          height: 49 + insets.bottom + 4,
+          height: 30 + insets.bottom + 4,
           paddingBottom: insets.bottom,
         }
       : { backgroundColor: "#fff" };
