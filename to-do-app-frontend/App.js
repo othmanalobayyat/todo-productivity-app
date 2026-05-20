@@ -102,10 +102,10 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
     Platform.OS === "web" && insets.bottom > 0
       ? {
           backgroundColor: "rgba(255,0,0,0.15)",
-          borderTopWidth: 2,
+          borderTopWidth: 0,
           borderTopColor: "red",
           height: 49 + insets.bottom + 4,
-          paddingBottom: insets.bottom,
+          //paddingBottom: insets.bottom,
         }
       : {
           backgroundColor: "rgba(0,0,255,0.15)",
@@ -368,134 +368,135 @@ export default function App() {
   return (
     // DEBUG: outer View with chartreuse border traces SafeAreaProvider's bounds.
     <View style={debugStyles.safeAreaProviderWrap}>
-    <SafeAreaProvider>
-      {isLoading ? (
-        <SplashScreen />
-      ) : (
-        <>
-          <NavigationContainer
-            linking={linking}
-            documentTitle={{
-              // On web, React Navigation defaults to route.name ("Tasks",
-              // "Calendar", etc.) for screens with no explicit title option.
-              // Safari reads document.title for the Share Sheet and the
-              // "Add to Home Screen" label — so without this override the
-              // share sheet shows "Tasks" instead of "Orvia".
-              // Screens that have an explicit title (Change Password, Edit
-              // Task, etc.) still show their own title in the browser tab.
-              formatter: (options, route) => options?.title ?? "ToDo",
-            }}
-          >
-            <StatusBar backgroundColor="#451E5D" />
-            {/* DEBUG: cyan tint on Stack scene container. */}
-            <Stack.Navigator
-              sceneContainerStyle={{ backgroundColor: "rgba(0,200,255,0.2)" }}
-              initialRouteName={isLoggedIn ? "Main" : "Welcome"}>
-              {!isLoggedIn && (
-                <>
-                  <Stack.Screen
-                    name="Welcome"
-                    component={WelcomeScreen}
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen name="Login" options={{ headerShown: false }}>
-                    {(props) => (
-                      <LoginScreen
-                        {...props}
-                        onLoginSuccess={handleLoginSuccess}
-                      />
-                    )}
-                  </Stack.Screen>
-                  <Stack.Screen
-                    name="Register"
-                    options={{ headerShown: false }}
-                  >
-                    {(props) => (
-                      <RegisterScreen
-                        {...props}
-                        onRegisterSuccess={handleLoginSuccess}
-                      />
-                    )}
-                  </Stack.Screen>
-                  <Stack.Screen
-                    name="ForgotPassword"
-                    component={ForgotPasswordScreen}
-                    options={{ headerShown: false }}
-                  />
-                </>
-              )}
-              {isLoggedIn && (
-                <>
-                  <Stack.Screen name="Main" options={{ headerShown: false }}>
-                    {() => (
-                      <TabNavigator
-                        userData={userData}
-                        onLogoutSuccess={handleLogoutSuccess}
-                        onProfileUpdate={handleProfileUpdate}
-                      />
-                    )}
-                  </Stack.Screen>
-                  <Stack.Screen
-                    name="CreateTask"
-                    component={CreateTaskScreen}
-                    options={headerOptions("Create Task")}
-                  />
-                  <Stack.Screen
-                    name="EditTask"
-                    component={EditTaskScreen}
-                    options={headerOptions("Edit Task")}
-                  />
-                  <Stack.Screen
-                    name="TaskDetails"
-                    component={TaskDetailsScreen}
-                    options={headerOptions("Task Details")}
-                  />
-                  <Stack.Screen
-                    name="ChangePassword"
-                    component={ChangePasswordScreen}
-                    options={headerOptions("Change Password")}
-                  />
-                  <Stack.Screen
-                    name="EditProfile"
-                    options={headerOptions("Edit Profile")}
-                  >
-                    {(props) => (
-                      <EditProfileScreen
-                        {...props}
-                        onProfileUpdate={handleProfileUpdate}
-                      />
-                    )}
-                  </Stack.Screen>
-                </>
-              )}
-              {/* Always registered so deep links work regardless of auth state */}
-              <Stack.Screen
-                name="ResetPassword"
-                component={ResetPasswordScreen}
-                options={{ headerShown: false }}
-              />
-            </Stack.Navigator>
-          </NavigationContainer>
-          <UpdateModal
-            visible={updateInfo !== null}
-            info={updateInfo}
-            onUpdate={() => {
-              Linking.openURL(updateInfo.downloadUrl);
-              setUpdateInfo(null);
-            }}
-            onLater={() => setUpdateInfo(null)}
-          />
-          <IosInstallSheet
-            visible={showInstallSheet}
-            onDismiss={dismissInstallSheet}
-          />
-          <Toast ref={toastRef} />
-          <OfflineBanner visible={isOffline} />
-          {/* DEBUG: floating inset/height readout — remove before shipping */}
-          <DebugInsetsOverlay />
-        </>
-      )}
-    </SafeAreaProvider>
+      <SafeAreaProvider>
+        {isLoading ? (
+          <SplashScreen />
+        ) : (
+          <>
+            <NavigationContainer
+              linking={linking}
+              documentTitle={{
+                // On web, React Navigation defaults to route.name ("Tasks",
+                // "Calendar", etc.) for screens with no explicit title option.
+                // Safari reads document.title for the Share Sheet and the
+                // "Add to Home Screen" label — so without this override the
+                // share sheet shows "Tasks" instead of "Orvia".
+                // Screens that have an explicit title (Change Password, Edit
+                // Task, etc.) still show their own title in the browser tab.
+                formatter: (options, route) => options?.title ?? "ToDo",
+              }}
+            >
+              <StatusBar backgroundColor="#451E5D" />
+              {/* DEBUG: cyan tint on Stack scene container. */}
+              <Stack.Navigator
+                sceneContainerStyle={{ backgroundColor: "rgba(0,200,255,0.2)" }}
+                initialRouteName={isLoggedIn ? "Main" : "Welcome"}
+              >
+                {!isLoggedIn && (
+                  <>
+                    <Stack.Screen
+                      name="Welcome"
+                      component={WelcomeScreen}
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen name="Login" options={{ headerShown: false }}>
+                      {(props) => (
+                        <LoginScreen
+                          {...props}
+                          onLoginSuccess={handleLoginSuccess}
+                        />
+                      )}
+                    </Stack.Screen>
+                    <Stack.Screen
+                      name="Register"
+                      options={{ headerShown: false }}
+                    >
+                      {(props) => (
+                        <RegisterScreen
+                          {...props}
+                          onRegisterSuccess={handleLoginSuccess}
+                        />
+                      )}
+                    </Stack.Screen>
+                    <Stack.Screen
+                      name="ForgotPassword"
+                      component={ForgotPasswordScreen}
+                      options={{ headerShown: false }}
+                    />
+                  </>
+                )}
+                {isLoggedIn && (
+                  <>
+                    <Stack.Screen name="Main" options={{ headerShown: false }}>
+                      {() => (
+                        <TabNavigator
+                          userData={userData}
+                          onLogoutSuccess={handleLogoutSuccess}
+                          onProfileUpdate={handleProfileUpdate}
+                        />
+                      )}
+                    </Stack.Screen>
+                    <Stack.Screen
+                      name="CreateTask"
+                      component={CreateTaskScreen}
+                      options={headerOptions("Create Task")}
+                    />
+                    <Stack.Screen
+                      name="EditTask"
+                      component={EditTaskScreen}
+                      options={headerOptions("Edit Task")}
+                    />
+                    <Stack.Screen
+                      name="TaskDetails"
+                      component={TaskDetailsScreen}
+                      options={headerOptions("Task Details")}
+                    />
+                    <Stack.Screen
+                      name="ChangePassword"
+                      component={ChangePasswordScreen}
+                      options={headerOptions("Change Password")}
+                    />
+                    <Stack.Screen
+                      name="EditProfile"
+                      options={headerOptions("Edit Profile")}
+                    >
+                      {(props) => (
+                        <EditProfileScreen
+                          {...props}
+                          onProfileUpdate={handleProfileUpdate}
+                        />
+                      )}
+                    </Stack.Screen>
+                  </>
+                )}
+                {/* Always registered so deep links work regardless of auth state */}
+                <Stack.Screen
+                  name="ResetPassword"
+                  component={ResetPasswordScreen}
+                  options={{ headerShown: false }}
+                />
+              </Stack.Navigator>
+            </NavigationContainer>
+            <UpdateModal
+              visible={updateInfo !== null}
+              info={updateInfo}
+              onUpdate={() => {
+                Linking.openURL(updateInfo.downloadUrl);
+                setUpdateInfo(null);
+              }}
+              onLater={() => setUpdateInfo(null)}
+            />
+            <IosInstallSheet
+              visible={showInstallSheet}
+              onDismiss={dismissInstallSheet}
+            />
+            <Toast ref={toastRef} />
+            <OfflineBanner visible={isOffline} />
+            {/* DEBUG: floating inset/height readout — remove before shipping */}
+            <DebugInsetsOverlay />
+          </>
+        )}
+      </SafeAreaProvider>
     </View>
   );
 }
