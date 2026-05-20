@@ -52,6 +52,17 @@
       body {
         height: 100%;
       }
+      /* iOS PWA standalone: height:100% resolves to the initial containing
+         block (ICB), which excludes the home-indicator zone on iOS Safari.
+         This leaves a gap equal to env(safe-area-inset-bottom) at the bottom.
+         -webkit-fill-available fills the viewport in pre-15.4 iOS Safari;
+         100dvh (dynamic viewport height = window.innerHeight) covers 15.4+.
+         body's background CSS-spec-paints to the full canvas regardless, so
+         without this fix the body background shows below the React tree. */
+      body {
+        min-height: -webkit-fill-available;
+        min-height: 100dvh;
+      }
       /* Disable body scrolling — ScrollView handles it */
       body {
         overflow: hidden;
