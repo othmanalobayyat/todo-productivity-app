@@ -63,6 +63,20 @@
         flex: 1;
       }
     </style>
+
+    <!-- ─── DEBUG: paint each HTML layer a unique colour ─────────────────────
+         If any of these colours are visible in the running app it means that
+         layer is NOT fully covered by the React tree above it.
+           hotpink  = <html>  (outermost — should never show)
+           orange   = <body>  (should never show)
+           gold     = #root   (should never show)
+         Remove this block before shipping.
+    ──────────────────────────────────────────────────────────────────────── -->
+    <style id="debug-layers">
+      html { background: hotpink !important; }
+      body { background: orange !important; }
+      #root { background: gold !important; }
+    </style>
   </head>
 
   <body>
