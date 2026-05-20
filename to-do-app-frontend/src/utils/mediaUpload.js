@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 const CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -18,7 +19,13 @@ export async function pickImageFromLibrary() {
 // Returns { url, publicId } so the caller can store the public_id for later deletion.
 export async function uploadAvatarToCDN(uri) {
   const data = new FormData();
-  data.append('file', { uri, type: 'image/jpeg', name: 'avatar.jpg' });
+  if (Platform.OS === 'web') {
+    // On web, { uri, type, name } is not a valid FormData value — fetch the blob URL instead.
+    const blob = await fetch(uri).then((r) => r.blob());
+    data.append('file', new File([blob], 'avatar.jpg', { type: 'image/jpeg' }));
+  } else {
+    data.append('file', { uri, type: 'image/jpeg', name: 'avatar.jpg' });
+  }
   data.append('upload_preset', UPLOAD_PRESET);
 
   const res = await fetch(

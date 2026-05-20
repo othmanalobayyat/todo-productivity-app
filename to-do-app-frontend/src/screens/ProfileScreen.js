@@ -124,7 +124,8 @@ export default function ProfileScreen({
   };
 
   const initials = userData?.name?.trim().charAt(0).toUpperCase() || "?";
-  const displayAvatar = localPreview || userData?.avatar || null;
+  const rawAvatar = localPreview || userData?.avatar;
+  const displayAvatar = typeof rawAvatar === 'string' ? rawAvatar : null;
   const streak = calculateStreak(tasks);
   const completedCount = tasks.filter((t) => t.completed).length;
   const total = tasks.length;
