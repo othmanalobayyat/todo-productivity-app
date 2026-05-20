@@ -47,16 +47,20 @@
 
     <!-- react-native-web recommended style reset -->
     <style id="expo-reset">
+      /* Make body and html full height */
       html,
       body {
         height: 100%;
-        background-color: #fff; /* ← هاد الحل */
       }
-      #root {
-        margin: 0;
-        padding: 0;
+      /* Disable body scrolling — ScrollView handles it */
+      body {
         overflow: hidden;
-        background: #fff;
+      }
+      /* Root element full height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
       }
     </style>
   </head>

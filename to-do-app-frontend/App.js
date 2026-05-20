@@ -73,26 +73,31 @@ const TAB_ICONS = { Tasks: "tasks", Calendar: "calendar", Profile: "user" };
 function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
   const insets = useSafeAreaInsets();
 
+  // On iPhone web/PWA the content zone is a fixed 49px regardless of the
+  // home-indicator inset. justifyContent:'flex-start' in the tab items leaves
+  // only ~8px between the label and the home-indicator zone — too cramped.
+  // Adding 10px to the bar height (web-only, only when a home indicator is
+  // present) gives ~18px of breathing room, matching native iOS proportions.
+  // paddingBottom is explicitly repeated so it overrides RN's internal value
+  // with the same number (no double-padding). Android and desktop are unaffected.
   const webTabBarStyle =
-    Platform.OS === "web"
+    Platform.OS === "web" && insets.bottom > 0
       ? {
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-
           backgroundColor: "#fff",
-
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-
-          height: 60 + insets.bottom,
-
+          height: 49 + insets.bottom + 4,
           paddingBottom: insets.bottom,
-          paddingTop: 6,
+          // Replace React Navigation's hard hairline border with a soft shadow.
+          // The hairline creates a visible "edge" that makes the safe-area zone
+          // below the icons look like a separate white block. A shadow spans the
+          // full bar height so the icons + home-indicator clearance read as one
+          // continuous surface — matching Facebook / Instagram / X behaviour.
+          borderTopWidth: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
         }
-      : {};
+      : { backgroundColor: "#fff" };
 
   return (
     <Tab.Navigator
@@ -104,29 +109,21 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
             color={color}
           />
         ),
-
         tabBarActiveTintColor: "#451E5D",
         tabBarInactiveTintColor: "gray",
-
-        tabBarHideOnKeyboard: true,
-
         tabBarStyle: webTabBarStyle,
-
-        tabBarLabelStyle: {
-          fontSize: 12,
-          marginBottom: 4,
-        },
-
-        headerShown: false,
+        tabBarLabelStyle: { fontSize: 12 },
       })}
     >
-      <Tab.Screen name="Tasks">
+      <Tab.Screen name="Tasks" options={{ headerShown: false }}>
         {(props) => <TasksScreen {...props} userData={userData} />}
       </Tab.Screen>
-
-      <Tab.Screen name="Calendar" component={CalendarScreen} />
-
-      <Tab.Screen name="Profile">
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ headerShown: false }}
+      />
+      <Tab.Screen name="Profile" options={{ headerShown: false }}>
         {(props) => (
           <ProfileScreen
             {...props}
