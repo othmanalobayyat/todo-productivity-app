@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -234,7 +234,9 @@ function DaySummaryCard({ tasks }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CalendarScreen({ navigation }) {
-  const today = getTodayString();
+  // Memoized so it never changes during the component's lifetime (date doesn't
+  // shift while the app is open), which keeps it stable as a useMemo dependency.
+  const today = useMemo(() => getTodayString(), []);
 
   const [tasks, setTasks] = useState([]);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -274,97 +276,126 @@ export default function CalendarScreen({ navigation }) {
     }, []),
   );
 
-  const markedDates = getMarkedDates(tasks, selectedDate, today);
-  const dayTasks = getTasksForDate(tasks, selectedDate);
+  // Derived values memoized so they don't recompute on every render.
+  const markedDates = useMemo(
+    () => getMarkedDates(tasks, selectedDate, today),
+    [tasks, selectedDate, today],
+  );
+  const dayTasks = useMemo(
+    () => getTasksForDate(tasks, selectedDate),
+    [tasks, selectedDate],
+  );
 
-  const renderTask = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.taskRow,
-        item.priority === "high" && !item.completed && styles.taskRowHigh,
-      ]}
-      onPress={() => navigation.navigate("TaskDetails", { task: item })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.taskLeft}>
-        <Text
-          style={[styles.taskTitle, item.completed && styles.taskTitleDone]}
-          numberOfLines={1}
-        >
-          {item.title}
-        </Text>
-        <View
-          style={[
-            styles.priorityBadge,
-            {
-              backgroundColor:
-                PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.medium,
-            },
-          ]}
-        >
-          <Text style={styles.priorityText}>
-            {(item.priority || "medium").toUpperCase()}
+  // Static theme object — memoized so Calendar never receives a new reference
+  // on re-renders unrelated to theming, which would force it to re-render.
+  const calendarTheme = useMemo(() => ({
+    backgroundColor: "#f5f2f8",
+    calendarBackground: "#f5f2f8",
+    todayTextColor: "#451E5D",
+    selectedDayBackgroundColor: "#451E5D",
+    selectedDayTextColor: "#fff",
+    arrowColor: "#451E5D",
+    textDayFontSize: 14,
+    textMonthFontSize: 15,
+    textMonthFontWeight: "bold",
+    monthTextColor: "#1a1a1a",
+    dayTextColor: "#2c3e50",
+    textDisabledColor: "#c8c8d0",
+  }), []);
+
+  // Stable callback — avoids Calendar receiving a new onDayPress reference on
+  // every render, which would otherwise bypass its internal shouldComponentUpdate.
+  const onDayPress = useCallback(
+    (day) => setSelectedDate(day.dateString),
+    [],
+  );
+
+  // Stable renderItem — without useCallback, FlatList re-renders all visible
+  // task rows on every parent state change (e.g. date selection).
+  const renderTask = useCallback(
+    ({ item }) => (
+      <TouchableOpacity
+        style={[
+          styles.taskRow,
+          item.priority === "high" && !item.completed && styles.taskRowHigh,
+        ]}
+        onPress={() => navigation.navigate("TaskDetails", { task: item })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.taskLeft}>
+          <Text
+            style={[styles.taskTitle, item.completed && styles.taskTitleDone]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </Text>
+          <View
+            style={[
+              styles.priorityBadge,
+              {
+                backgroundColor:
+                  PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.medium,
+              },
+            ]}
+          >
+            <Text style={styles.priorityText}>
+              {(item.priority || "medium").toUpperCase()}
+            </Text>
+          </View>
+        </View>
+        {!!item.completed && <Text style={styles.doneLabel}>Done</Text>}
+      </TouchableOpacity>
+    ),
+    [navigation],
+  );
+
+  // The header element is memoized so FlatList does not receive a new element
+  // reference on renders where its deps haven't changed, preventing the Calendar
+  // from unmounting/remounting unnecessarily. React reconciles props differences
+  // when deps do change, so Calendar stays mounted and only updates what changed.
+  const ListHeader = useMemo(
+    () => (
+      <>
+        <Calendar
+          current={today}
+          onDayPress={onDayPress}
+          markedDates={markedDates}
+          theme={calendarTheme}
+        />
+        <View style={styles.daySection}>
+          <Text style={styles.dayLabel}>
+            {selectedDate === today
+              ? `Today · ${formatDisplayDate(today)}`
+              : formatDisplayDate(selectedDate)}
           </Text>
         </View>
-      </View>
-      {!!item.completed && <Text style={styles.doneLabel}>Done</Text>}
-    </TouchableOpacity>
+        {loading ? (
+          <ActivityIndicator size="small" color="#451E5D" style={styles.loader} />
+        ) : fetchError ? (
+          <View style={styles.errorState}>
+            <Text style={styles.errorStateText}>Could not load tasks</Text>
+            <Text style={styles.errorStateSub}>
+              Check your connection and try again.
+            </Text>
+          </View>
+        ) : (
+          <DaySummaryCard tasks={dayTasks} />
+        )}
+      </>
+    ),
+    [loading, fetchError, dayTasks, markedDates, selectedDate, today, onDayPress, calendarTheme],
   );
 
   return (
     <View style={styles.container}>
       <AppHeader title="Calendar" />
-
-      <Calendar
-        current={today}
-        onDayPress={(day) => setSelectedDate(day.dateString)}
-        markedDates={markedDates}
-        theme={{
-          backgroundColor: "#f5f2f8",
-          calendarBackground: "#f5f2f8",
-          todayTextColor: "#451E5D",
-          selectedDayBackgroundColor: "#451E5D",
-          selectedDayTextColor: "#fff",
-          arrowColor: "#451E5D",
-          textDayFontSize: 14,
-          textMonthFontSize: 15,
-          textMonthFontWeight: "bold",
-          monthTextColor: "#1a1a1a",
-          dayTextColor: "#2c3e50",
-          textDisabledColor: "#c8c8d0",
-        }}
+      <FlatList
+        data={dayTasks}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderTask}
+        ListHeaderComponent={ListHeader}
+        contentContainerStyle={styles.listContent}
       />
-
-      <View style={styles.daySection}>
-        <Text style={styles.dayLabel}>
-          {selectedDate === today
-            ? `Today · ${formatDisplayDate(today)}`
-            : formatDisplayDate(selectedDate)}
-        </Text>
-      </View>
-
-      {loading ? (
-        <ActivityIndicator size="small" color="#451E5D" style={styles.loader} />
-      ) : fetchError ? (
-        <View style={styles.errorState}>
-          <Text style={styles.errorStateText}>Could not load tasks</Text>
-          <Text style={styles.errorStateSub}>
-            Check your connection and try again.
-          </Text>
-        </View>
-      ) : (
-        <>
-          <DaySummaryCard tasks={dayTasks} />
-          {dayTasks.length > 0 && (
-            <FlatList
-              data={dayTasks}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={renderTask}
-              contentContainerStyle={styles.listContent}
-            />
-          )}
-        </>
-      )}
     </View>
   );
 }
