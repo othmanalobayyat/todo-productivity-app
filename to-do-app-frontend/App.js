@@ -86,6 +86,16 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
           backgroundColor: "#fff",
           height: 49 + insets.bottom + 4,
           paddingBottom: insets.bottom,
+          // Replace React Navigation's hard hairline border with a soft shadow.
+          // The hairline creates a visible "edge" that makes the safe-area zone
+          // below the icons look like a separate white block. A shadow spans the
+          // full bar height so the icons + home-indicator clearance read as one
+          // continuous surface — matching Facebook / Instagram / X behaviour.
+          borderTopWidth: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
         }
       : { backgroundColor: "#fff" };
 
