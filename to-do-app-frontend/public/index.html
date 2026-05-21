@@ -73,6 +73,44 @@
         height: 100%;
         flex: 1;
       }
+
+      /*
+       * iOS PWA VIEWPORT STABILITY FIX
+       *
+       * Problem: in standalone mode iOS sometimes reports a different
+       * window.innerHeight between launches (observed: 918px on first cold
+       * start, 950px on subsequent relaunches — a 32px discrepancy).
+       * Both window.innerHeight and visualViewport.height shift together, so
+       * this is a genuine viewport-size change, not a CSS measurement artifact.
+       *
+       * In browser mode the min-height:100dvh trick is necessary because the
+       * address bar can hide and reveal extra space. In standalone mode there
+       * is no address bar, so there is no reason to use dvh over height:100%.
+       * Overriding with height:100% + overflow:hidden in standalone mode locks
+       * the layout to the ICB (initial containing block) — the same value as
+       * window.innerHeight at page load — and prevents any transient oversized
+       * viewport from stretching the body and pushing content down.
+       */
+      @media (display-mode: standalone) {
+        html {
+          height: 100%;
+          /* Disable any dvh/fill-available expansion in standalone */
+          min-height: unset;
+          max-height: 100%;
+          overflow: hidden;
+        }
+        body {
+          height: 100%;
+          min-height: unset;
+          max-height: 100%;
+          overflow: hidden;
+        }
+        #root {
+          height: 100%;
+          max-height: 100%;
+          overflow: hidden;
+        }
+      }
     </style>
 
   </head>
