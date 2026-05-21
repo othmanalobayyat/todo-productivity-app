@@ -70,8 +70,63 @@ const SplashScreen = () => (
 // Defined outside App so it is not recreated on every render.
 const TAB_ICONS = { Tasks: "tasks", Calendar: "calendar", Profile: "user" };
 
+// Reads env(safe-area-inset-bottom) directly from the DOM instead of relying
+// on react-native-safe-area-context, which reads env() synchronously at mount.
+// On iOS PWA cold start (home-screen relaunch after memory eviction), WebKit
+// reports env(safe-area-inset-bottom) = 0 at mount time and never fires a
+// ResizeObserver callback when the real value (34px) settles — so
+// useSafeAreaInsets() stays stale for the entire session.
+// Reading after requestAnimationFrame guarantees iOS has settled the value.
+// visibilitychange + pageshow re-measure on every PWA resume.
+function useCssSafeAreaBottom() {
+  const [bottom, setBottom] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    function measure() {
+      const el = document.createElement("div");
+      el.style.cssText =
+        "position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none";
+      document.body.appendChild(el);
+      const val =
+        parseFloat(window.getComputedStyle(el).paddingBottom) || 0;
+      document.body.removeChild(el);
+      setBottom(val);
+    }
+
+    // Post-first-paint: env() is settled by the time RAF fires.
+    const rafId = requestAnimationFrame(measure);
+
+    // Re-measure whenever the PWA returns to the foreground.
+    const onVisible = () => {
+      if (!document.hidden) setTimeout(measure, 150);
+    };
+    const onPageShow = (e) => {
+      // e.persisted = true → restored from back/forward cache after iOS resume.
+      // Always re-measure on any pageshow event in a PWA context.
+      setTimeout(measure, 150);
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      cancelAnimationFrame(rafId);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
+  return bottom;
+}
+
 function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
-  const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets(); // used on native (iOS/Android)
+  // On web, bypass useSafeAreaInsets() — it gives a stale 0 on iOS PWA cold
+  // start. useCssSafeAreaBottom reads env() directly after the first paint and
+  // re-reads on every PWA foreground resume.
+  const cssBottom = useCssSafeAreaBottom();
+  const safeBottom = Platform.OS === "web" ? cssBottom : insets.bottom;
 
   // On iPhone web/PWA the content zone is a fixed 49px regardless of the
   // home-indicator inset. justifyContent:'flex-start' in the tab items leaves
@@ -80,10 +135,10 @@ function TabNavigator({ userData, onLogoutSuccess, onProfileUpdate }) {
   // present) gives ~12px of breathing room, matching native iOS proportions.
   // Android and desktop are unaffected.
   const webTabBarStyle =
-    Platform.OS === "web" && insets.bottom > 0
+    Platform.OS === "web" && safeBottom > 0
       ? {
           backgroundColor: "#fff",
-          height: 49 + insets.bottom + 4,
+          height: 49 + safeBottom + 4,
           borderTopWidth: 0,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -1 },
