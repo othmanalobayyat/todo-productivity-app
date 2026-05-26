@@ -7,11 +7,17 @@ var app = express();
 app.set("trust proxy", 1);
 
 var allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map(function (o) { return o.trim(); })
+  ? process.env.CORS_ORIGIN.split(",").map(function (o) {
+      return o.trim();
+    })
   : "*";
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
+
+app.get("/", function (req, res) {
+  res.send("API running");
+});
 
 const auth = require("./routes/auth.js");
 app.use("/api", auth);
