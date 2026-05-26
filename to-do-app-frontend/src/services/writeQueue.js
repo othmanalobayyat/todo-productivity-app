@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from './api';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "./api";
 
-const WRITE_QUEUE_KEY = 'write_queue';
+const WRITE_QUEUE_KEY = "write_queue";
 
 let _isDraining = false;
 
@@ -31,9 +31,9 @@ async function _saveQueue(queue) {
 export async function enqueueOperation(type, payload) {
   const queue = await loadQueue();
 
-  if (type === 'toggle') {
+  if (type === "toggle") {
     const idx = queue.findIndex(
-      (op) => op.type === 'toggle' && op.payload.taskId === payload.taskId,
+      (op) => op.type === "toggle" && op.payload.taskId === payload.taskId,
     );
     if (idx !== -1) {
       queue.splice(idx, 1);
@@ -42,21 +42,21 @@ export async function enqueueOperation(type, payload) {
     }
   }
 
-  if (type === 'delete') {
+  if (type === "delete") {
     // Remove any pending toggle for this task
     const tIdx = queue.findIndex(
-      (op) => op.type === 'toggle' && op.payload.taskId === payload.taskId,
+      (op) => op.type === "toggle" && op.payload.taskId === payload.taskId,
     );
     if (tIdx !== -1) queue.splice(tIdx, 1);
 
     // If it's an offline-only task (create never synced), just drop the create op
     const cIdx = queue.findIndex(
-      (op) => op.type === 'create' && op.payload.localId === payload.taskId,
+      (op) => op.type === "create" && op.payload.localId === payload.taskId,
     );
     if (cIdx !== -1) {
       queue.splice(cIdx, 1);
       await _saveQueue(queue);
-      return 'skip'; // task was never on the server — no DELETE needed
+      return "skip"; // task was never on the server — no DELETE needed
     }
   }
 
@@ -80,6 +80,44 @@ export async function clearQueue() {
   await AsyncStorage.removeItem(WRITE_QUEUE_KEY).catch(() => {});
 }
 
+// ─── OFFLINE ID REMAPPING ───────────────────────────────────────────────────
+// When a create operation succeeds, it receives a real server ID to replace
+// the temporary offline ID (e.g., 'offline-123456789' → 42).
+// This function updates all queued operations that reference the old ID so they
+// point to the server ID. This ensures subsequent operations (like updates)
+// use the correct ID and don't fail with 404.
+//
+// Safe to call because:
+// - Queue processes sequentially (no concurrent modifications)
+// - Only called after successful create (before next operation runs)
+// - Idempotent if called multiple times (remaps same operations)
+// - If this function fails, queue still processes normally (graceful degradation)
+//
+async function remapOfflineIdInQueue(localId, serverId) {
+  try {
+    const queue = await loadQueue();
+    const updated = queue.map((op) => {
+      // Check if this operation references the old offline ID
+      if (op.payload?.taskId === localId) {
+        console.log(
+          `[Queue] Remapping offline ID ${localId} → ${serverId} in ${op.type} operation`,
+        );
+        return {
+          ...op,
+          payload: { ...op.payload, taskId: serverId },
+        };
+      }
+      return op;
+    });
+    await _saveQueue(updated);
+  } catch (err) {
+    // Log but don't throw — queue processing continues.
+    // Worst case: an update operation will try to PATCH the offline ID,
+    // get a 404, and be skipped (existing error handling).
+    console.error("[Queue] Failed to remap offline ID:", err);
+  }
+}
+
 // Drains the queue sequentially.
 // onItemDrained(op, result) is called after each successful item for cache surgery.
 // Stops on the first failure to preserve ordering; remaining items stay queued.
@@ -96,12 +134,18 @@ export async function drainQueue(onItemDrained) {
       try {
         let result = null;
 
-        if (op.type === 'create') {
-          const res = await api.post('/tasks', op.payload.taskData);
+        if (op.type === "create") {
+          const res = await api.post("/tasks", op.payload.taskData);
           result = { serverTask: res.data, localId: op.payload.localId };
-        } else if (op.type === 'toggle') {
+          // ★ After successful create, remap any pending operations that reference
+          // the temporary offline ID to the new server ID.
+          await remapOfflineIdInQueue(op.payload.localId, res.data.id);
+        } else if (op.type === "toggle") {
           try {
-            const res = await api.patch(`/tasks/${op.payload.taskId}/complete`, {});
+            const res = await api.patch(
+              `/tasks/${op.payload.taskId}/complete`,
+              {},
+            );
             result = res.data;
           } catch (err) {
             if (err.response?.status === 404) {
@@ -110,12 +154,33 @@ export async function drainQueue(onItemDrained) {
               throw err;
             }
           }
-        } else if (op.type === 'delete') {
+        } else if (op.type === "delete") {
           try {
             await api.delete(`/tasks/${op.payload.taskId}`);
           } catch (err) {
             if (err.response?.status !== 404) throw err;
             // 404 = already deleted server-side → treat as success
+          }
+        } else if (op.type === "update") {
+          // ✓ New: Handle offline task edits.
+          // Payload includes taskId (either real or offline ID — remapped above)
+          // and updates object with fields to modify (title, description, priority, etc).
+          try {
+            const res = await api.put(
+              `/tasks/${op.payload.taskId}`,
+              op.payload.updates,
+            );
+            result = res.data;
+          } catch (err) {
+            if (err.response?.status === 404) {
+              // Task deleted server-side (shouldn't happen for offline-created tasks
+              // that were edited, but handle gracefully). Silently discard.
+              console.warn(
+                `[Queue] Skipped update for task ${op.payload.taskId}: task not found`,
+              );
+            } else {
+              throw err;
+            }
           }
         }
 
