@@ -24,8 +24,6 @@ import { checkForUpdate } from "./src/services/updateService";
 import UpdateModal from "./src/components/UpdateModal";
 import IosInstallSheet from "./src/components/IosInstallSheet";
 import { useIosInstallPrompt } from "./src/hooks/useIosInstallPrompt";
-import SafeAreaDebugOverlay from "./src/components/SafeAreaDebugOverlay";
-
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
@@ -518,7 +516,6 @@ export default function App() {
           />
           <Toast ref={toastRef} />
           <OfflineBanner visible={isOffline} />
-          <SafeAreaDebugOverlay />
         </>
       )}
     </SafeAreaProvider>
