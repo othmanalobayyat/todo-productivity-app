@@ -96,11 +96,6 @@ export default function TaskItem({ item, today, isCompleting, onToggle, onDetail
             <Text style={styles.statusText}>Overdue</Text>
           </View>
         )}
-        {!item.completed && item.due_date === today && (
-          <View style={[styles.statusBadge, styles.statusToday]}>
-            <Text style={styles.statusText}>Today</Text>
-          </View>
-        )}
         {!!item.pending_sync && (
           <View style={styles.pendingSyncBadge}>
             <Icon name="clock-o" size={10} color="#9c6fb5" />
@@ -235,9 +230,6 @@ const styles = StyleSheet.create({
   },
   statusOverdue: {
     backgroundColor: '#fdecea',
-  },
-  statusToday: {
-    backgroundColor: '#ede7f6',
   },
   statusText: {
     fontSize: 10,
