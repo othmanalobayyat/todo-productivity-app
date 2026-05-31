@@ -29,8 +29,6 @@ export function getRelativeDateLabel(dueDateStr, todayStr) {
   if (diff ===  0) return 'Today';
   if (diff ===  1) return 'Tomorrow';
   if (diff === -1) return 'Yesterday';
-  if (diff >=  2 && diff <=  7) return _WEEKDAYS[due.getDay()];
-  if (diff <= -2 && diff >= -7) return _WEEKDAYS[due.getDay()];
 
-  return `${due.getDate()} ${_MONTHS[due.getMonth()]}`;
+  return `${_WEEKDAYS[due.getDay()]}, ${due.getDate()} ${_MONTHS[due.getMonth()]}`;
 }
