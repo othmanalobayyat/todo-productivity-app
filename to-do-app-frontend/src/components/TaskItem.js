@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { PRIORITY_COLORS } from '../constants/priorities';
+import { getRelativeDateLabel } from '../utils/dateUtils';
 import OverflowMenu from './OverflowMenu';
 import DeleteConfirmModal from './DeleteConfirmModal';
 
@@ -87,7 +88,7 @@ export default function TaskItem({ item, today, isCompleting, onToggle, onDetail
         {item.due_date && (
           <>
             <View style={styles.metaSep} />
-            <Text style={styles.dueDate}>{item.due_date}</Text>
+            <Text style={styles.dueDate}>{getRelativeDateLabel(item.due_date, today)}</Text>
           </>
         )}
         {!item.completed && item.due_date && item.due_date < today && (

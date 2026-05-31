@@ -10,3 +10,27 @@ export function formatLocalDate(date) {
 export function getTodayString() {
   return formatLocalDate(new Date());
 }
+
+const _WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const _MONTHS   = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Returns a human-friendly label for dueDateStr relative to todayStr.
+// Both strings must be YYYY-MM-DD in the device's local timezone.
+// Appending T00:00:00 forces local-midnight parsing and avoids the UTC
+// shift that Date('YYYY-MM-DD') produces for users behind UTC.
+export function getRelativeDateLabel(dueDateStr, todayStr) {
+  const due   = new Date(dueDateStr + 'T00:00:00');
+  const today = new Date(todayStr   + 'T00:00:00');
+  // Math.round absorbs the ±1 h DST drift that can occur when crossing
+  // a daylight-saving boundary between the two dates.
+  const diff  = Math.round((due - today) / 86400000);
+
+  if (diff ===  0) return 'Today';
+  if (diff ===  1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  if (diff >=  2 && diff <=  7) return _WEEKDAYS[due.getDay()];
+  if (diff <= -2 && diff >= -7) return _WEEKDAYS[due.getDay()];
+
+  return `${due.getDate()} ${_MONTHS[due.getMonth()]}`;
+}
