@@ -124,9 +124,14 @@ model tasks {
   created_at      DateTime?
   updated_at      DateTime?
   priority        String                    @default("medium")
+  is_recurring   Boolean                   @default(false)
+  recur_from_id  Int?
+  recur_chain_id Int?
   subtasks        subtasks[]
   task_categories task_categories?          @relation(fields: [category_id], references: [id], onUpdate: NoAction)
   users           users                     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([recur_chain_id, due_date])
 }
 
 model users {

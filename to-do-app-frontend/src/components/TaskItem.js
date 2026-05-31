@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import Icon5 from 'react-native-vector-icons/FontAwesome5';
 import { PRIORITY_COLORS } from '../constants/priorities';
 import { getRelativeDateLabel } from '../utils/dateUtils';
 import OverflowMenu from './OverflowMenu';
@@ -85,6 +86,9 @@ export default function TaskItem({ item, today, isCompleting, onToggle, onDetail
         <Text style={[styles.priorityLabel, { color: priorityColor }]}>
           {(item.priority || 'medium').toUpperCase()}
         </Text>
+        {item.is_recurring && (
+          <Icon5 name="redo" size={10} color="#9c6fb5" solid />
+        )}
         {item.due_date && (
           <>
             <View style={styles.metaSep} />

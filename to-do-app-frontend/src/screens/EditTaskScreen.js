@@ -9,6 +9,7 @@ import {
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
+  Switch,
 } from "react-native";
 import api from "../services/api";
 import { showToast } from "../components/Toast";
@@ -29,6 +30,7 @@ export default function EditTaskScreen({ route, navigation }) {
     category: "",
     completed: false,
     priority: "medium",
+    isRecurring: false,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCache, setIsLoadingCache] = useState(false);
@@ -81,6 +83,7 @@ export default function EditTaskScreen({ route, navigation }) {
       category: taskData.category_id ?? "",
       completed: taskData.completed,
       priority: taskData.priority ?? "medium",
+      isRecurring: taskData.is_recurring ?? false,
     });
   };
 
@@ -114,6 +117,7 @@ export default function EditTaskScreen({ route, navigation }) {
           due_date: formatLocalDate(task.dueDate),
           completed: task.completed,
           priority: task.priority,
+          is_recurring: task.isRecurring,
         };
 
         // 1. Queue the update operation for later sync
@@ -155,6 +159,7 @@ export default function EditTaskScreen({ route, navigation }) {
         due_date: formatLocalDate(task.dueDate),
         completed: task.completed,
         priority: task.priority,
+        is_recurring: task.isRecurring,
       });
       showToast("Task updated successfully", "success");
       navigation.goBack();
@@ -245,6 +250,21 @@ export default function EditTaskScreen({ route, navigation }) {
                 <Picker.Item label="Medium" value="medium" />
                 <Picker.Item label="Low" value="low" />
               </Picker>
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Repeat Daily</Text>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchHint}>
+                Generate a new occurrence every day
+              </Text>
+              <Switch
+                value={task.isRecurring}
+                onValueChange={(val) => setTask((prev) => ({ ...prev, isRecurring: val }))}
+                trackColor={{ false: '#E8E2F0', true: '#451E5D' }}
+                thumbColor='#fff'
+              />
             </View>
           </View>
 
@@ -358,5 +378,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: 0.2,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8F6FB",
+    borderWidth: 1.5,
+    borderColor: "#E8E2F0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  switchHint: {
+    fontSize: 14,
+    color: "#7C7A8E",
+    flex: 1,
+    marginRight: 12,
   },
 });

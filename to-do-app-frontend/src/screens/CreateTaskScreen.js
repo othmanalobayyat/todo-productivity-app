@@ -9,6 +9,7 @@ import {
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
+  Switch,
 } from 'react-native';
 import api from '../services/api';
 import { showToast } from '../components/Toast';
@@ -29,6 +30,7 @@ export default function CreateTaskScreen({ navigation }) {
   const [categories, setCategories]         = useState([]);
   const [categoriesUnavailable, setCategoriesUnavailable] = useState(false);
   const [priority, setPriority]             = useState('medium');
+  const [isRecurring, setIsRecurring]       = useState(false);
   const [isLoading, setIsLoading]           = useState(false);
 
   useEffect(() => {
@@ -67,11 +69,12 @@ export default function CreateTaskScreen({ navigation }) {
     }
 
     const taskData = {
-      title:       title.trim(),
+      title:        title.trim(),
       description,
-      due_date:    formatLocalDate(dueDate),
-      category_id: category || null,
+      due_date:     formatLocalDate(dueDate),
+      category_id:  category || null,
       priority,
+      is_recurring: isRecurring,
     };
 
     const offline = await checkIsOffline();
@@ -81,6 +84,7 @@ export default function CreateTaskScreen({ navigation }) {
       const offlineTask = {
         id: localId,
         ...taskData,
+        is_recurring: isRecurring,
         completed: false,
         completed_at: null,
         subtasks_total: 0,
@@ -190,6 +194,21 @@ export default function CreateTaskScreen({ navigation }) {
                 <Picker.Item label="Medium" value="medium" />
                 <Picker.Item label="Low"    value="low"    />
               </Picker>
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Repeat Daily</Text>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchHint}>
+                Generate a new occurrence every day
+              </Text>
+              <Switch
+                value={isRecurring}
+                onValueChange={setIsRecurring}
+                trackColor={{ false: '#E8E2F0', true: '#451E5D' }}
+                thumbColor='#fff'
+              />
             </View>
           </View>
 
@@ -304,5 +323,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9c6fb5',
     marginTop: 4,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F6FB',
+    borderWidth: 1.5,
+    borderColor: '#E8E2F0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  switchHint: {
+    fontSize: 14,
+    color: '#7C7A8E',
+    flex: 1,
+    marginRight: 12,
   },
 });
