@@ -115,7 +115,6 @@ export default function EditTaskScreen({ route, navigation }) {
           description: task.description,
           category_id: task.category || null,
           due_date: formatLocalDate(task.dueDate),
-          completed: task.completed,
           priority: task.priority,
           is_recurring: task.isRecurring,
         };
@@ -157,7 +156,6 @@ export default function EditTaskScreen({ route, navigation }) {
         description: task.description,
         category_id: task.category || null,
         due_date: formatLocalDate(task.dueDate),
-        completed: task.completed,
         priority: task.priority,
         is_recurring: task.isRecurring,
       });

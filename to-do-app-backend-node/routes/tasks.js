@@ -165,39 +165,48 @@ router.get("/tasks/:id", authMiddleware, async function (req, res) {
   }
 });
 
-router.put("/tasks/:id", authMiddleware, [body("title").notEmpty().withMessage("Task title is required")], async function (req, res) {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-  try {
-    var task = await Prisma.tasks.findFirst({
-      where: { id: parseInt(req.params.id), user_id: req.user.userId },
-    });
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+router.put(
+  "/tasks/:id",
+  authMiddleware,
+  [
+    body("title").notEmpty().withMessage("Task title is required"),
+    body("priority").optional().isIn(["high", "medium", "low"]).withMessage("Priority must be high, medium, or low"),
+    body("completed").not().exists().withMessage("Use PATCH /tasks/:id/complete to change completion status"),
+  ],
+  async function (req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
+    try {
+      var task = await Prisma.tasks.findFirst({
+        where: { id: parseInt(req.params.id), user_id: req.user.userId },
+      });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
-    var updateData = {
-      title: req.body.title,
-      description: req.body.description,
-      due_date: req.body.due_date,
-      priority: req.body.priority || "medium",
-      category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
-    };
-    if (req.body.is_recurring !== undefined) {
-      updateData.is_recurring = req.body.is_recurring === true || req.body.is_recurring === "true";
+      var updateData = {
+        title: req.body.title,
+        description: req.body.description,
+        due_date: req.body.due_date,
+        priority: req.body.priority || "medium",
+        category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
+      };
+      if (req.body.is_recurring !== undefined) {
+        updateData.is_recurring = req.body.is_recurring === true || req.body.is_recurring === "true";
+      }
+
+      var updated = await Prisma.tasks.update({
+        where: { id: parseInt(req.params.id) },
+        data: updateData,
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating task" });
     }
-
-    var updated = await Prisma.tasks.update({
-      where: { id: parseInt(req.params.id) },
-      data: updateData,
-    });
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ message: "Error updating task" });
-  }
-});
+  },
+);
 
 router.delete("/tasks/:id", authMiddleware, async function (req, res) {
   try {
