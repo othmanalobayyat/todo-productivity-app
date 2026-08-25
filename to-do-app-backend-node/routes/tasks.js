@@ -17,9 +17,26 @@ function _addOneDay(dateStr) {
 }
 
 // Inserts one row per missing day for every active recurring chain owned by
-// userId, up to and including today. createMany(skipDuplicates) makes this
-// safe to call concurrently — the unique(recur_chain_id, due_date) constraint
-// silently drops any row that already exists.
+// userId, up to and including today, optionally copying subtasks from the
+// latest occurrence when that chain has repeat_subtasks enabled.
+//
+// Concurrency: the whole function runs inside a single transaction guarded by
+// a Postgres session-level advisory lock scoped to userId
+// (pg_advisory_xact_lock). Two simultaneous GET /tasks calls for the same
+// user serialize on this lock — the second call only starts its own
+// chain/latest lookup after the first has committed, so it always sees the
+// first call's newly-created occurrences and never re-derives the same
+// "latest" row twice. This makes both the task rows and their copied
+// subtasks safe to generate concurrently without relying on timing, in
+// addition to (not instead of) the existing unique(recur_chain_id, due_date)
+// constraint on tasks, which still guards against duplicate occurrences from
+// any other write path.
+//
+// Task rows for a chain's gap are inserted in one batched
+// createManyAndReturn (skipDuplicates) call rather than per-day round trips,
+// so a multi-day (or multi-chain) gap stays fast under real network latency;
+// subtasks are then copied in one batched createMany per chain, keyed off
+// the ids that call actually returns.
 async function _generateRecurringOccurrences(userId) {
   var now = new Date();
   var todayStr = [
@@ -28,56 +45,92 @@ async function _generateRecurringOccurrences(userId) {
     String(now.getDate()).padStart(2, "0"),
   ].join("-");
 
-  var allRecurring = await Prisma.tasks.findMany({
-    where: { user_id: userId, is_recurring: true, recur_chain_id: { not: null } },
-    orderBy: { due_date: "desc" },
-    select: {
-      id: true,
-      due_date: true,
-      recur_chain_id: true,
-      title: true,
-      description: true,
-      priority: true,
-      category_id: true,
-    },
-  });
+  await Prisma.$transaction(
+    async function (tx) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${userId})`;
 
-  // Keep only the latest (highest due_date) occurrence per chain.
-  var chainLatest = new Map();
-  for (var t of allRecurring) {
-    if (!chainLatest.has(t.recur_chain_id)) {
-      chainLatest.set(t.recur_chain_id, t);
-    }
-  }
-
-  var toCreate = [];
-  for (var [chainId, latest] of chainLatest) {
-    if (!latest.due_date || latest.due_date >= todayStr) continue;
-
-    var cursor = latest.due_date;
-    var count = 0;
-    while (count < 365) {
-      cursor = _addOneDay(cursor);
-      if (cursor > todayStr) break;
-      count++;
-      toCreate.push({
-        user_id: userId,
-        title: latest.title,
-        description: latest.description,
-        priority: latest.priority,
-        category_id: latest.category_id,
-        due_date: cursor,
-        is_recurring: true,
-        recur_from_id: latest.id,
-        recur_chain_id: chainId,
-        completed: false,
+      var allRecurring = await tx.tasks.findMany({
+        where: { user_id: userId, is_recurring: true, recur_chain_id: { not: null } },
+        orderBy: { due_date: "desc" },
+        select: {
+          id: true,
+          due_date: true,
+          recur_chain_id: true,
+          title: true,
+          description: true,
+          priority: true,
+          category_id: true,
+          repeat_subtasks: true,
+        },
       });
-    }
-  }
 
-  if (toCreate.length > 0) {
-    await Prisma.tasks.createMany({ data: toCreate, skipDuplicates: true });
-  }
+      // Keep only the latest (highest due_date) occurrence per chain.
+      var chainLatest = new Map();
+      for (var t of allRecurring) {
+        if (!chainLatest.has(t.recur_chain_id)) {
+          chainLatest.set(t.recur_chain_id, t);
+        }
+      }
+
+      for (var [chainId, latest] of chainLatest) {
+        if (!latest.due_date || latest.due_date >= todayStr) continue;
+
+        var toCreate = [];
+        var cursor = latest.due_date;
+        var count = 0;
+        while (count < 365) {
+          cursor = _addOneDay(cursor);
+          if (cursor > todayStr) break;
+          count++;
+          toCreate.push({
+            user_id: userId,
+            title: latest.title,
+            description: latest.description,
+            priority: latest.priority,
+            category_id: latest.category_id,
+            due_date: cursor,
+            is_recurring: true,
+            recur_from_id: latest.id,
+            recur_chain_id: chainId,
+            repeat_subtasks: latest.repeat_subtasks,
+            completed: false,
+          });
+        }
+
+        if (toCreate.length === 0) continue;
+
+        var createdRows = await tx.tasks.createManyAndReturn({
+          data: toCreate,
+          skipDuplicates: true,
+          select: { id: true },
+        });
+
+        if (createdRows.length === 0 || !latest.repeat_subtasks) continue;
+
+        // Copied from the latest occurrence once per chain, so every day
+        // generated in this gap inherits the same source subtask set —
+        // mirroring how title/description/priority above are also copied
+        // from `latest` rather than re-derived per generated day. Deletes
+        // made to the latest occurrence's subtasks after that lookup simply
+        // aren't in this list; additions made before it are.
+        var sourceSubtasks = await tx.subtasks.findMany({
+          where: { task_id: latest.id },
+          select: { title: true },
+        });
+
+        if (sourceSubtasks.length === 0) continue;
+
+        var subtaskRows = [];
+        for (var row of createdRows) {
+          for (var s of sourceSubtasks) {
+            subtaskRows.push({ task_id: row.id, title: s.title, completed: false });
+          }
+        }
+        await tx.subtasks.createMany({ data: subtaskRows });
+      }
+    },
+    { timeout: 20000, maxWait: 10000 },
+  );
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────
@@ -133,6 +186,7 @@ router.post(
           priority: req.body.priority || "medium",
           category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
           is_recurring: req.body.is_recurring === true || req.body.is_recurring === "true",
+          repeat_subtasks: req.body.repeat_subtasks === true || req.body.repeat_subtasks === "true",
         },
       });
 
@@ -195,6 +249,9 @@ router.put(
       };
       if (req.body.is_recurring !== undefined) {
         updateData.is_recurring = req.body.is_recurring === true || req.body.is_recurring === "true";
+      }
+      if (req.body.repeat_subtasks !== undefined) {
+        updateData.repeat_subtasks = req.body.repeat_subtasks === true || req.body.repeat_subtasks === "true";
       }
 
       var updated = await Prisma.tasks.update({

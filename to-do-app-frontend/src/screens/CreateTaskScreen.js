@@ -31,6 +31,7 @@ export default function CreateTaskScreen({ navigation }) {
   const [categoriesUnavailable, setCategoriesUnavailable] = useState(false);
   const [priority, setPriority]             = useState('medium');
   const [isRecurring, setIsRecurring]       = useState(false);
+  const [repeatSubtasks, setRepeatSubtasks] = useState(false);
   const [isLoading, setIsLoading]           = useState(false);
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export default function CreateTaskScreen({ navigation }) {
       category_id:  category || null,
       priority,
       is_recurring: isRecurring,
+      repeat_subtasks: isRecurring && repeatSubtasks,
     };
 
     const offline = await checkIsOffline();
@@ -205,12 +207,32 @@ export default function CreateTaskScreen({ navigation }) {
               </Text>
               <Switch
                 value={isRecurring}
-                onValueChange={setIsRecurring}
+                onValueChange={(val) => {
+                  setIsRecurring(val);
+                  if (!val) setRepeatSubtasks(false);
+                }}
                 trackColor={{ false: '#E8E2F0', true: '#451E5D' }}
                 thumbColor='#fff'
               />
             </View>
           </View>
+
+          {isRecurring && (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Repeat Subtasks</Text>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchHint}>
+                  Copy subtasks into each new daily occurrence
+                </Text>
+                <Switch
+                  value={repeatSubtasks}
+                  onValueChange={setRepeatSubtasks}
+                  trackColor={{ false: '#E8E2F0', true: '#451E5D' }}
+                  thumbColor='#fff'
+                />
+              </View>
+            </View>
+          )}
 
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Due Date</Text>

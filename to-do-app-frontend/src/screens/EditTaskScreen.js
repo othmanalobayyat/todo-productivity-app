@@ -31,6 +31,7 @@ export default function EditTaskScreen({ route, navigation }) {
     completed: false,
     priority: "medium",
     isRecurring: false,
+    repeatSubtasks: false,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCache, setIsLoadingCache] = useState(false);
@@ -84,6 +85,7 @@ export default function EditTaskScreen({ route, navigation }) {
       completed: taskData.completed,
       priority: taskData.priority ?? "medium",
       isRecurring: taskData.is_recurring ?? false,
+      repeatSubtasks: taskData.repeat_subtasks ?? false,
     });
   };
 
@@ -117,6 +119,7 @@ export default function EditTaskScreen({ route, navigation }) {
           due_date: formatLocalDate(task.dueDate),
           priority: task.priority,
           is_recurring: task.isRecurring,
+          repeat_subtasks: task.isRecurring && task.repeatSubtasks,
         };
 
         // 1. Queue the update operation for later sync
@@ -158,6 +161,7 @@ export default function EditTaskScreen({ route, navigation }) {
         due_date: formatLocalDate(task.dueDate),
         priority: task.priority,
         is_recurring: task.isRecurring,
+        repeat_subtasks: task.isRecurring && task.repeatSubtasks,
       });
       showToast("Task updated successfully", "success");
       navigation.goBack();
@@ -259,12 +263,35 @@ export default function EditTaskScreen({ route, navigation }) {
               </Text>
               <Switch
                 value={task.isRecurring}
-                onValueChange={(val) => setTask((prev) => ({ ...prev, isRecurring: val }))}
+                onValueChange={(val) =>
+                  setTask((prev) => ({
+                    ...prev,
+                    isRecurring: val,
+                    repeatSubtasks: val ? prev.repeatSubtasks : false,
+                  }))
+                }
                 trackColor={{ false: '#E8E2F0', true: '#451E5D' }}
                 thumbColor='#fff'
               />
             </View>
           </View>
+
+          {task.isRecurring && (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Repeat Subtasks</Text>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchHint}>
+                  Copy subtasks into each new daily occurrence
+                </Text>
+                <Switch
+                  value={task.repeatSubtasks}
+                  onValueChange={(val) => setTask((prev) => ({ ...prev, repeatSubtasks: val }))}
+                  trackColor={{ false: '#E8E2F0', true: '#451E5D' }}
+                  thumbColor='#fff'
+                />
+              </View>
+            </View>
+          )}
 
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Due Date</Text>
