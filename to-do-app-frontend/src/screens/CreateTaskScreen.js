@@ -15,12 +15,15 @@ import api from '../services/api';
 import { showToast } from '../components/Toast';
 import { Picker } from '@react-native-picker/picker';
 import DatePickerField from '../components/DatePickerField';
-import { formatLocalDate } from '../utils/dateUtils';
+import TimePickerField from '../components/TimePickerField';
+import { formatLocalDate, formatLocalTime } from '../utils/dateUtils';
+import { getDeviceTimezone } from '../utils/timezone';
 import { loadCachedTasks, saveTasks } from '../services/taskCache';
 import { enqueueOperation } from '../services/writeQueue';
 import { triggerTaskRefresh } from '../services/taskEvents';
 import { checkIsOffline } from '../utils/networkUtils';
 import { loadCachedCategories, fetchAndCacheCategories } from '../services/categoryCache';
+import * as reminderService from '../services/reminderService';
 
 export default function CreateTaskScreen({ navigation }) {
   const [title, setTitle]             = useState('');
@@ -32,7 +35,32 @@ export default function CreateTaskScreen({ navigation }) {
   const [priority, setPriority]             = useState('medium');
   const [isRecurring, setIsRecurring]       = useState(false);
   const [repeatSubtasks, setRepeatSubtasks] = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderTime, setReminderTime]       = useState(new Date());
   const [isLoading, setIsLoading]           = useState(false);
+
+  // Turning a reminder ON is the explicit user action that's allowed to
+  // request notification permission (Android) / Web Push permission (iPhone
+  // PWA) — never requested automatically on load.
+  async function handleReminderToggle(val) {
+    if (!val) {
+      setReminderEnabled(false);
+      return;
+    }
+    const { ok, reason } = await reminderService.requestReminderPermission();
+    if (!ok) {
+      setReminderEnabled(false);
+      if (reason === 'needs-install') {
+        showToast('Add this app to your Home Screen first to enable reminders.');
+      } else if (reason === 'unsupported') {
+        showToast('Reminders are not supported in this browser.');
+      } else {
+        showToast('Notification permission was not granted.');
+      }
+      return;
+    }
+    setReminderEnabled(true);
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -77,6 +105,9 @@ export default function CreateTaskScreen({ navigation }) {
       priority,
       is_recurring: isRecurring,
       repeat_subtasks: isRecurring && repeatSubtasks,
+      reminder_enabled: reminderEnabled,
+      reminder_time: reminderEnabled ? formatLocalTime(reminderTime) : null,
+      reminder_timezone: reminderEnabled ? getDeviceTimezone() : null,
     };
 
     const offline = await checkIsOffline();
@@ -99,6 +130,9 @@ export default function CreateTaskScreen({ navigation }) {
       const cached = await loadCachedTasks();
       await saveTasks(cached ? [...cached, offlineTask] : [offlineTask]);
       await enqueueOperation('create', { localId, taskData });
+      // Schedule immediately against the offline id — App.js's queue-drain
+      // handler reconciles this to the real server id once it syncs.
+      reminderService.scheduleForTask(offlineTask);
 
       // Notify TasksScreen to reload from cache so the new task appears immediately.
       triggerTaskRefresh();
@@ -110,7 +144,8 @@ export default function CreateTaskScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      await api.post('/tasks', taskData);
+      const response = await api.post('/tasks', taskData);
+      reminderService.scheduleForTask(response.data);
       showToast('Task created successfully', 'success');
       navigation.goBack();
     } catch (error) {
@@ -237,6 +272,24 @@ export default function CreateTaskScreen({ navigation }) {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Due Date</Text>
             <DatePickerField value={dueDate} onChange={setDueDate} />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Reminder</Text>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchHint}>
+                {reminderEnabled ? 'Notify me at the time below' : 'Off'}
+              </Text>
+              <Switch
+                value={reminderEnabled}
+                onValueChange={handleReminderToggle}
+                trackColor={{ false: '#E8E2F0', true: '#451E5D' }}
+                thumbColor='#fff'
+              />
+            </View>
+            {reminderEnabled && (
+              <TimePickerField value={reminderTime} onChange={setReminderTime} />
+            )}
           </View>
 
         </View>

@@ -61,6 +61,9 @@ async function _generateRecurringOccurrences(userId) {
           priority: true,
           category_id: true,
           repeat_subtasks: true,
+          reminder_enabled: true,
+          reminder_time: true,
+          reminder_timezone: true,
         },
       });
 
@@ -93,6 +96,13 @@ async function _generateRecurringOccurrences(userId) {
             recur_from_id: latest.id,
             recur_chain_id: chainId,
             repeat_subtasks: latest.repeat_subtasks,
+            // Reminder settings follow the same "copy from latest occurrence"
+            // model as title/description/priority/repeat_subtasks above —
+            // each generated day gets its own independent reminder row that
+            // the scheduler (see scheduler.js) fires at most once.
+            reminder_enabled: latest.reminder_enabled,
+            reminder_time: latest.reminder_enabled ? latest.reminder_time : null,
+            reminder_timezone: latest.reminder_enabled ? latest.reminder_timezone : null,
             completed: false,
           });
         }
@@ -133,6 +143,57 @@ async function _generateRecurringOccurrences(userId) {
   );
 }
 
+// ─── Reminder validation ────────────────────────────────────────────────────
+
+var REMINDER_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+// Same technique scheduler.js uses to convert a zone to a UTC offset —
+// Intl throws RangeError for anything that isn't a real IANA identifier, so
+// this is a reliable validity check without a lookup table or dependency.
+function _isValidTimeZone(tz) {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Shared between POST /tasks and PUT /tasks/:id. Both fields are optional
+// (a task with no reminder sends neither), but a value that IS sent must be
+// well-formed — malformed input is rejected with 400 rather than silently
+// stored and only discovered later when the scheduler can't parse it.
+var reminderValidators = [
+  body("reminder_time")
+    .optional({ nullable: true })
+    .custom(function (value) {
+      if (value === null || value === undefined || value === "") return true;
+      if (typeof value !== "string" || !REMINDER_TIME_RE.test(value)) {
+        throw new Error("reminder_time must be in 24-hour HH:mm format, e.g. \"20:00\"");
+      }
+      return true;
+    }),
+  body("reminder_timezone")
+    .optional({ nullable: true })
+    .custom(function (value) {
+      if (value === null || value === undefined || value === "") return true;
+      if (typeof value !== "string" || !_isValidTimeZone(value)) {
+        throw new Error("reminder_timezone must be a valid IANA timezone identifier, e.g. \"Europe/Istanbul\"");
+      }
+      return true;
+    }),
+  // Cross-field: a reminder that's enabled without a time is not schedulable —
+  // catch that at the API boundary instead of letting it sit inert forever.
+  body().custom(function (_, meta) {
+    var req = meta.req;
+    var enabled = req.body.reminder_enabled === true || req.body.reminder_enabled === "true";
+    if (enabled && !req.body.reminder_time) {
+      throw new Error("reminder_time is required when reminder_enabled is true");
+    }
+    return true;
+  }),
+];
+
 // ─── Routes ───────────────────────────────────────────────────────────────
 
 router.get("/tasks", authMiddleware, async function (req, res) {
@@ -169,7 +230,7 @@ router.get("/tasks", authMiddleware, async function (req, res) {
 router.post(
   "/tasks",
   authMiddleware,
-  [body("title").notEmpty().withMessage("Task title is required")],
+  [body("title").notEmpty().withMessage("Task title is required"), ...reminderValidators],
   async function (req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -187,6 +248,9 @@ router.post(
           category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
           is_recurring: req.body.is_recurring === true || req.body.is_recurring === "true",
           repeat_subtasks: req.body.repeat_subtasks === true || req.body.repeat_subtasks === "true",
+          reminder_enabled: req.body.reminder_enabled === true || req.body.reminder_enabled === "true",
+          reminder_time: req.body.reminder_time || null,
+          reminder_timezone: req.body.reminder_timezone || null,
         },
       });
 
@@ -226,6 +290,7 @@ router.put(
     body("title").notEmpty().withMessage("Task title is required"),
     body("priority").optional().isIn(["high", "medium", "low"]).withMessage("Priority must be high, medium, or low"),
     body("completed").not().exists().withMessage("Use PATCH /tasks/:id/complete to change completion status"),
+    ...reminderValidators,
   ],
   async function (req, res) {
     const errors = validationResult(req);
@@ -253,11 +318,32 @@ router.put(
       if (req.body.repeat_subtasks !== undefined) {
         updateData.repeat_subtasks = req.body.repeat_subtasks === true || req.body.repeat_subtasks === "true";
       }
+      var reminderChanged = false;
+      if (req.body.reminder_enabled !== undefined) {
+        updateData.reminder_enabled = req.body.reminder_enabled === true || req.body.reminder_enabled === "true";
+        reminderChanged = true;
+      }
+      if (req.body.reminder_time !== undefined) {
+        updateData.reminder_time = req.body.reminder_time || null;
+        reminderChanged = true;
+      }
+      if (req.body.reminder_timezone !== undefined) {
+        updateData.reminder_timezone = req.body.reminder_timezone || null;
+        reminderChanged = true;
+      }
 
       var updated = await Prisma.tasks.update({
         where: { id: parseInt(req.params.id) },
         data: updateData,
       });
+
+      // A changed reminder (new time, or re-enabled) should be eligible to
+      // fire again even if this occurrence's reminder already fired once —
+      // clear its dedup record so the scheduler treats it as unsent.
+      if (reminderChanged) {
+        await Prisma.reminder_log.deleteMany({ where: { task_id: updated.id } }).catch(() => {});
+      }
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Error updating task" });

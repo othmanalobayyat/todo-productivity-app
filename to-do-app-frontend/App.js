@@ -7,7 +7,7 @@ import {
   StyleSheet,
   StatusBar,
 } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import * as Linking from "expo-linking";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -45,11 +45,34 @@ import {
   fetchAndCacheTasks,
 } from "./src/services/taskCache";
 import { triggerTaskRefresh } from "./src/services/taskEvents";
+import * as reminderService from "./src/services/reminderService";
+import * as webPush from "./src/services/webPush";
+import * as androidNotifications from "./src/services/androidNotifications";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const MIN_SPLASH_MS = 1500;
+
+// Module-level so it can be reached from the service-worker message handler
+// and the Android notification-tap listener without threading a ref through
+// props.
+const navigationRef = createNavigationContainerRef();
+
+// Navigates to the task a reminder notification pointed at. Fetches the
+// full task record first since TaskDetailsScreen expects a full task object
+// (the same convention TasksScreen already uses), not just an id.
+async function _openReminderTask(taskId) {
+  if (!taskId) return;
+  try {
+    const response = await api.get(`/tasks/${taskId}`);
+    if (navigationRef.isReady()) {
+      navigationRef.navigate("TaskDetails", { task: response.data });
+    }
+  } catch {
+    // Task no longer exists, or offline — nothing sensible to deep-link to.
+  }
+}
 
 const linking = {
   prefixes: [Linking.createURL("/"), "todoapp://"],
@@ -208,6 +231,85 @@ export default function App() {
   const { shouldShow: showInstallSheet, dismiss: dismissInstallSheet } =
     useIosInstallPrompt();
 
+  // Holds a reminder-notification taskId received before the app finished
+  // logging in / the nav container was ready — consumed once both are true.
+  const pendingReminderTaskId = useRef(null);
+
+  useEffect(() => {
+    if (isLoggedIn && pendingReminderTaskId.current) {
+      const id = pendingReminderTaskId.current;
+      pendingReminderTaskId.current = null;
+      _openReminderTask(id);
+    }
+  }, [isLoggedIn]);
+
+  function handleReminderTaskId(taskId) {
+    if (isLoggedIn && navigationRef.isReady()) {
+      _openReminderTask(taskId);
+    } else {
+      pendingReminderTaskId.current = taskId;
+    }
+  }
+
+  // Web/PWA: register the service worker (inert until a push subscription
+  // exists — safe to do unconditionally, unlike requesting permission) and
+  // wire up notification-click + subscription-change messages from it.
+  // Also opportunistically re-registers an already-granted push
+  // subscription with the backend (covers pushsubscriptionchange and a
+  // fresh app load after permission was granted in an earlier session).
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    webPush.registerServiceWorker().then(() => {
+      webPush.resyncIfAlreadyEnabled();
+    });
+
+    function onMessage(event) {
+      const data = event.data;
+      if (!data) return;
+      if (data.type === "reminder-notification-click") {
+        handleReminderTaskId(data.taskId);
+      } else if (data.type === "reminder-pushsubscriptionchange") {
+        webPush.resyncIfAlreadyEnabled();
+      }
+    }
+
+    if (typeof navigator !== "undefined" && navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener("message", onMessage);
+    }
+
+    // App opened fresh from a notification tap (no existing client to
+    // postMessage to) — sw.js falls back to opening "/?reminderTaskId=...".
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const taskId = params.get("reminderTaskId");
+      if (taskId) handleReminderTaskId(taskId);
+    }
+
+    return () => {
+      if (typeof navigator !== "undefined" && navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener("message", onMessage);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Android: pick up a tap on a locally-scheduled reminder, both for a cold
+  // start (app launched by the tap) and while already running.
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    androidNotifications.getInitialNotificationTaskId().then((taskId) => {
+      if (taskId) handleReminderTaskId(taskId);
+    });
+
+    const unsubscribe = androidNotifications.subscribeToNotificationTaps((taskId) => {
+      handleReminderTaskId(taskId);
+    });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Subscribe to network state changes.
   // Tracks the previous connection value so we can detect the offline→online
   // transition and drain any queued offline writes.
@@ -235,6 +337,10 @@ export default function App() {
                   ),
                 );
               }
+              // The offline-id local reminder (if any) is no longer valid —
+              // cancel it and reschedule under the real server id.
+              await reminderService.cancelForTask(result.localId);
+              await reminderService.scheduleForTask(result.serverTask);
             }
           });
 
@@ -369,6 +475,7 @@ export default function App() {
   const handleLogoutSuccess = useCallback(async () => {
     await AsyncStorage.removeItem(USER_PROFILE_KEY).catch(() => {});
     await clearQueue();
+    await webPush.unsubscribe().catch(() => {});
     setIsLoggedIn(false);
     setUserData(null);
   }, []);
@@ -402,6 +509,7 @@ export default function App() {
       ) : (
         <>
           <NavigationContainer
+            ref={navigationRef}
             linking={linking}
             documentTitle={{
               // On web, React Navigation defaults to route.name ("Tasks",

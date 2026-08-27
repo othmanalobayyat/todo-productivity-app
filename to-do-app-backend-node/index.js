@@ -34,6 +34,9 @@ app.use("/api", profile);
 const categories = require("./routes/categories.js");
 app.use("/api", categories);
 
+const push = require("./routes/push.js");
+app.use("/api", push);
+
 // Health check
 app.get("/ping", function (req, res) {
   res.json({ message: "pong" });

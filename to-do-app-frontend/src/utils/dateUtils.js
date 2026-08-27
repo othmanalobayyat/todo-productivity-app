@@ -11,6 +11,21 @@ export function getTodayString() {
   return formatLocalDate(new Date());
 }
 
+// Format a Date as 24h "HH:mm" in local time — used for reminder_time.
+export function formatLocalTime(date) {
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+// Formats "HH:mm" (24h) as a 12h label, e.g. "20:00" -> "8:00 PM".
+export function formatTimeLabel(timeStr) {
+  const [hh, mm] = timeStr.split(':').map(Number);
+  const period = hh >= 12 ? 'PM' : 'AM';
+  const hour12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${hour12}:${String(mm).padStart(2, '0')} ${period}`;
+}
+
 const _WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const _MONTHS   = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

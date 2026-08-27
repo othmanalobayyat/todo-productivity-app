@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
+import * as reminderService from './reminderService';
 
 const TASKS_CACHE_KEY = 'tasks_cache';
 
@@ -42,6 +43,12 @@ export function fetchAndCacheTasks() {
     .then((res) => {
       const tasks = (res.data || []).filter((t) => t.id && t.title);
       saveTasks(tasks);
+      // Reconciles Android's local reminder schedule against the
+      // authoritative server list on every fetch — cancels reminders for
+      // tasks that were deleted/edited elsewhere, (re)schedules the rest,
+      // and picks up reminders copied forward onto newly generated
+      // recurring occurrences. No-op on web/iOS (server-push delivery).
+      reminderService.reconcileWithTasks(tasks).catch(() => {});
       return tasks;
     })
     .finally(() => {

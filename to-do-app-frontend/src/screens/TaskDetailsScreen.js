@@ -17,6 +17,7 @@ import api from '../services/api';
 import { checkIsOffline } from '../utils/networkUtils';
 import { enqueueOperation } from '../services/writeQueue';
 import { loadCachedTasks, saveTasks } from '../services/taskCache';
+import * as reminderService from '../services/reminderService';
 
 export default function TaskDetailsScreen({ route, navigation }) {
   const taskId = route.params.task.id;
@@ -128,6 +129,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
   async function handleDeleteTask() {
     const cached = await loadCachedTasks();
     const nextCache = cached ? cached.filter((t) => t.id !== taskId) : null;
+
+    // Cancel any locally-scheduled Android reminder immediately — this is a
+    // device-local, connectivity-independent action, so it doesn't need to
+    // wait for the delete to sync (matters for the offline path below).
+    reminderService.cancelForTask(taskId);
 
     // Optimistic: update cache and navigate back immediately.
     if (nextCache) saveTasks(nextCache);

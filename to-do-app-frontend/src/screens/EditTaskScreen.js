@@ -16,10 +16,13 @@ import { showToast } from "../components/Toast";
 import { checkIsOffline } from "../utils/networkUtils";
 import { Picker } from "@react-native-picker/picker";
 import DatePickerField from "../components/DatePickerField";
-import { formatLocalDate } from "../utils/dateUtils";
+import TimePickerField from "../components/TimePickerField";
+import { formatLocalDate, formatLocalTime } from "../utils/dateUtils";
+import { getDeviceTimezone } from "../utils/timezone";
 import { loadCachedTasks, saveTasks } from "../services/taskCache";
 import { enqueueOperation } from "../services/writeQueue";
 import { triggerTaskRefresh } from "../services/taskEvents";
+import * as reminderService from "../services/reminderService";
 
 export default function EditTaskScreen({ route, navigation }) {
   const { taskId } = route.params;
@@ -32,8 +35,30 @@ export default function EditTaskScreen({ route, navigation }) {
     priority: "medium",
     isRecurring: false,
     repeatSubtasks: false,
+    reminderEnabled: false,
+    reminderTime: new Date(),
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  async function handleReminderToggle(val) {
+    if (!val) {
+      setTask((prev) => ({ ...prev, reminderEnabled: false }));
+      return;
+    }
+    const { ok, reason } = await reminderService.requestReminderPermission();
+    if (!ok) {
+      setTask((prev) => ({ ...prev, reminderEnabled: false }));
+      if (reason === "needs-install") {
+        showToast("Add this app to your Home Screen first to enable reminders.");
+      } else if (reason === "unsupported") {
+        showToast("Reminders are not supported in this browser.");
+      } else {
+        showToast("Notification permission was not granted.");
+      }
+      return;
+    }
+    setTask((prev) => ({ ...prev, reminderEnabled: true }));
+  }
   const [isLoadingCache, setIsLoadingCache] = useState(false);
   const [categories, setCategories] = useState([]);
 
@@ -77,6 +102,13 @@ export default function EditTaskScreen({ route, navigation }) {
       ? rawDate.split("-").map(Number)
       : [null, null, null];
     const resolvedDate = rawDate ? new Date(year, month - 1, day) : new Date();
+
+    let resolvedReminderTime = new Date();
+    if (taskData.reminder_time) {
+      const [hh, mm] = taskData.reminder_time.split(":").map(Number);
+      resolvedReminderTime.setHours(hh, mm, 0, 0);
+    }
+
     setTask({
       title: taskData.title,
       description: taskData.description ?? "",
@@ -86,6 +118,8 @@ export default function EditTaskScreen({ route, navigation }) {
       priority: taskData.priority ?? "medium",
       isRecurring: taskData.is_recurring ?? false,
       repeatSubtasks: taskData.repeat_subtasks ?? false,
+      reminderEnabled: taskData.reminder_enabled ?? false,
+      reminderTime: resolvedReminderTime,
     });
   };
 
@@ -120,6 +154,9 @@ export default function EditTaskScreen({ route, navigation }) {
           priority: task.priority,
           is_recurring: task.isRecurring,
           repeat_subtasks: task.isRecurring && task.repeatSubtasks,
+          reminder_enabled: task.reminderEnabled,
+          reminder_time: task.reminderEnabled ? formatLocalTime(task.reminderTime) : null,
+          reminder_timezone: task.reminderEnabled ? getDeviceTimezone() : null,
         };
 
         // 1. Queue the update operation for later sync
@@ -130,12 +167,19 @@ export default function EditTaskScreen({ route, navigation }) {
 
         // 2. Update the cache optimistically so the change is visible immediately
         const cached = await loadCachedTasks();
+        let mergedTask = null;
         if (cached) {
-          const updated = cached.map((t) =>
-            t.id === taskId ? { ...t, ...updates } : t,
-          );
+          const updated = cached.map((t) => {
+            if (t.id !== taskId) return t;
+            mergedTask = { ...t, ...updates };
+            return mergedTask;
+          });
           await saveTasks(updated);
         }
+        // Reconcile the local schedule immediately (offline-capable) rather
+        // than waiting for sync — cancels/reschedules based on the merged
+        // task, same as the online path below.
+        reminderService.scheduleForTask(mergedTask || { id: taskId, ...updates, completed: task.completed });
 
         // 3. Notify other screens (like TasksScreen) to refresh from cache
         triggerTaskRefresh();
@@ -154,7 +198,7 @@ export default function EditTaskScreen({ route, navigation }) {
     // ✓ EXISTING ONLINE PATH: Send directly to API (unchanged)
     setIsLoading(true);
     try {
-      await api.put(`/tasks/${taskId}`, {
+      const response = await api.put(`/tasks/${taskId}`, {
         title: task.title.trim(),
         description: task.description,
         category_id: task.category || null,
@@ -162,7 +206,11 @@ export default function EditTaskScreen({ route, navigation }) {
         priority: task.priority,
         is_recurring: task.isRecurring,
         repeat_subtasks: task.isRecurring && task.repeatSubtasks,
+        reminder_enabled: task.reminderEnabled,
+        reminder_time: task.reminderEnabled ? formatLocalTime(task.reminderTime) : null,
+        reminder_timezone: task.reminderEnabled ? getDeviceTimezone() : null,
       });
+      reminderService.scheduleForTask(response.data);
       showToast("Task updated successfully", "success");
       navigation.goBack();
     } catch (error) {
@@ -301,6 +349,27 @@ export default function EditTaskScreen({ route, navigation }) {
                 setTask((prev) => ({ ...prev, dueDate: date }))
               }
             />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Reminder</Text>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchHint}>
+                {task.reminderEnabled ? 'Notify me at the time below' : 'Off'}
+              </Text>
+              <Switch
+                value={task.reminderEnabled}
+                onValueChange={handleReminderToggle}
+                trackColor={{ false: '#E8E2F0', true: '#451E5D' }}
+                thumbColor='#fff'
+              />
+            </View>
+            {task.reminderEnabled && (
+              <TimePickerField
+                value={task.reminderTime}
+                onChange={(date) => setTask((prev) => ({ ...prev, reminderTime: date }))}
+              />
+            )}
           </View>
         </View>
 
